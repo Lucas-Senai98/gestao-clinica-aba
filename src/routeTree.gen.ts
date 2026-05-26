@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SessionPatientIdRouteImport } from './routes/session.$patientId'
 import { Route as PatientPatientIdRouteImport } from './routes/patient.$patientId'
 import { Route as EvolutionPatientIdRouteImport } from './routes/evolution.$patientId'
+import { Route as AdminHoursRouteImport } from './routes/admin.hours'
 
 const ParentRoute = ParentRouteImport.update({
   id: '/parent',
@@ -46,19 +47,26 @@ const EvolutionPatientIdRoute = EvolutionPatientIdRouteImport.update({
   path: '/evolution/$patientId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminHoursRoute = AdminHoursRouteImport.update({
+  id: '/hours',
+  path: '/hours',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/parent': typeof ParentRoute
+  '/admin/hours': typeof AdminHoursRoute
   '/evolution/$patientId': typeof EvolutionPatientIdRoute
   '/patient/$patientId': typeof PatientPatientIdRoute
   '/session/$patientId': typeof SessionPatientIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/parent': typeof ParentRoute
+  '/admin/hours': typeof AdminHoursRoute
   '/evolution/$patientId': typeof EvolutionPatientIdRoute
   '/patient/$patientId': typeof PatientPatientIdRoute
   '/session/$patientId': typeof SessionPatientIdRoute
@@ -66,8 +74,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/parent': typeof ParentRoute
+  '/admin/hours': typeof AdminHoursRoute
   '/evolution/$patientId': typeof EvolutionPatientIdRoute
   '/patient/$patientId': typeof PatientPatientIdRoute
   '/session/$patientId': typeof SessionPatientIdRoute
@@ -78,6 +87,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/parent'
+    | '/admin/hours'
     | '/evolution/$patientId'
     | '/patient/$patientId'
     | '/session/$patientId'
@@ -86,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/parent'
+    | '/admin/hours'
     | '/evolution/$patientId'
     | '/patient/$patientId'
     | '/session/$patientId'
@@ -94,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/parent'
+    | '/admin/hours'
     | '/evolution/$patientId'
     | '/patient/$patientId'
     | '/session/$patientId'
@@ -101,7 +113,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   ParentRoute: typeof ParentRoute
   EvolutionPatientIdRoute: typeof EvolutionPatientIdRoute
   PatientPatientIdRoute: typeof PatientPatientIdRoute
@@ -152,12 +164,29 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EvolutionPatientIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/hours': {
+      id: '/admin/hours'
+      path: '/hours'
+      fullPath: '/admin/hours'
+      preLoaderRoute: typeof AdminHoursRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
+interface AdminRouteChildren {
+  AdminHoursRoute: typeof AdminHoursRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminHoursRoute: AdminHoursRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   ParentRoute: ParentRoute,
   EvolutionPatientIdRoute: EvolutionPatientIdRoute,
   PatientPatientIdRoute: PatientPatientIdRoute,
