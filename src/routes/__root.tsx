@@ -115,7 +115,10 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      <RoleProvider>
+        <Outlet />
+        <Toaster richColors position="top-right" />
+      </RoleProvider>
     </QueryClientProvider>
   );
 }
