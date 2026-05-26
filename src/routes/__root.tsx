@@ -74,13 +74,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "GiZé's | Gestão Clínica ABA" },
+      { title: "Gestão Clínica ABA" },
       { name: "description", content: "Plataforma de gestão de terapias integradas e ABA — coleta de dados, prontuário eletrônico e portal dos pais." },
       { name: "author", content: "GiZé's Clínica" },
-      { property: "og:title", content: "GiZé's | Gestão Clínica ABA" },
-      { property: "og:description", content: "Plataforma de gestão de terapias integradas e ABA." },
+      { property: "og:title", content: "Gestão Clínica ABA" },
+      { property: "og:description", content: "Plataforma de gestão de terapias integradas e ABA — coleta de dados, prontuário eletrônico e portal dos pais." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "Gestão Clínica ABA" },
+      { name: "twitter:description", content: "Plataforma de gestão de terapias integradas e ABA — coleta de dados, prontuário eletrônico e portal dos pais." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d95cf894-6f0b-4837-a403-21764702f7c8/id-preview-6f481737--6186704f-743a-48da-83c6-a2658c344dae.lovable.app-1779812896396.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d95cf894-6f0b-4837-a403-21764702f7c8/id-preview-6f481737--6186704f-743a-48da-83c6-a2658c344dae.lovable.app-1779812896396.png" },
     ],
     links: [
       {
