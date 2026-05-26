@@ -7,6 +7,8 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import { RoleProvider } from "@/lib/role-context";
+import { Toaster } from "@/components/ui/sonner";
 
 import appCss from "../styles.css?url";
 
@@ -72,14 +74,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "GiZé's | Gestão Clínica ABA" },
+      { name: "description", content: "Plataforma de gestão de terapias integradas e ABA — coleta de dados, prontuário eletrônico e portal dos pais." },
+      { name: "author", content: "GiZé's Clínica" },
+      { property: "og:title", content: "GiZé's | Gestão Clínica ABA" },
+      { property: "og:description", content: "Plataforma de gestão de terapias integradas e ABA." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       {
@@ -113,7 +114,10 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      <RoleProvider>
+        <Outlet />
+        <Toaster richColors position="top-right" />
+      </RoleProvider>
     </QueryClientProvider>
   );
 }

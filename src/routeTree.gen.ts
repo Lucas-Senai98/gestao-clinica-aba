@@ -9,38 +9,153 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ParentRouteImport } from './routes/parent'
+import { Route as ForumRouteImport } from './routes/forum'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SessionPatientIdRouteImport } from './routes/session.$patientId'
+import { Route as PatientPatientIdRouteImport } from './routes/patient.$patientId'
+import { Route as EvolutionPatientIdRouteImport } from './routes/evolution.$patientId'
+import { Route as AdminHoursRouteImport } from './routes/admin.hours'
 
+const ParentRoute = ParentRouteImport.update({
+  id: '/parent',
+  path: '/parent',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForumRoute = ForumRouteImport.update({
+  id: '/forum',
+  path: '/forum',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SessionPatientIdRoute = SessionPatientIdRouteImport.update({
+  id: '/session/$patientId',
+  path: '/session/$patientId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PatientPatientIdRoute = PatientPatientIdRouteImport.update({
+  id: '/patient/$patientId',
+  path: '/patient/$patientId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EvolutionPatientIdRoute = EvolutionPatientIdRouteImport.update({
+  id: '/evolution/$patientId',
+  path: '/evolution/$patientId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminHoursRoute = AdminHoursRouteImport.update({
+  id: '/hours',
+  path: '/hours',
+  getParentRoute: () => AdminRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/forum': typeof ForumRoute
+  '/parent': typeof ParentRoute
+  '/admin/hours': typeof AdminHoursRoute
+  '/evolution/$patientId': typeof EvolutionPatientIdRoute
+  '/patient/$patientId': typeof PatientPatientIdRoute
+  '/session/$patientId': typeof SessionPatientIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/forum': typeof ForumRoute
+  '/parent': typeof ParentRoute
+  '/admin/hours': typeof AdminHoursRoute
+  '/evolution/$patientId': typeof EvolutionPatientIdRoute
+  '/patient/$patientId': typeof PatientPatientIdRoute
+  '/session/$patientId': typeof SessionPatientIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/forum': typeof ForumRoute
+  '/parent': typeof ParentRoute
+  '/admin/hours': typeof AdminHoursRoute
+  '/evolution/$patientId': typeof EvolutionPatientIdRoute
+  '/patient/$patientId': typeof PatientPatientIdRoute
+  '/session/$patientId': typeof SessionPatientIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/forum'
+    | '/parent'
+    | '/admin/hours'
+    | '/evolution/$patientId'
+    | '/patient/$patientId'
+    | '/session/$patientId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/admin'
+    | '/forum'
+    | '/parent'
+    | '/admin/hours'
+    | '/evolution/$patientId'
+    | '/patient/$patientId'
+    | '/session/$patientId'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/forum'
+    | '/parent'
+    | '/admin/hours'
+    | '/evolution/$patientId'
+    | '/patient/$patientId'
+    | '/session/$patientId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
+  ForumRoute: typeof ForumRoute
+  ParentRoute: typeof ParentRoute
+  EvolutionPatientIdRoute: typeof EvolutionPatientIdRoute
+  PatientPatientIdRoute: typeof PatientPatientIdRoute
+  SessionPatientIdRoute: typeof SessionPatientIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/parent': {
+      id: '/parent'
+      path: '/parent'
+      fullPath: '/parent'
+      preLoaderRoute: typeof ParentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forum': {
+      id: '/forum'
+      path: '/forum'
+      fullPath: '/forum'
+      preLoaderRoute: typeof ForumRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +163,55 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/session/$patientId': {
+      id: '/session/$patientId'
+      path: '/session/$patientId'
+      fullPath: '/session/$patientId'
+      preLoaderRoute: typeof SessionPatientIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/patient/$patientId': {
+      id: '/patient/$patientId'
+      path: '/patient/$patientId'
+      fullPath: '/patient/$patientId'
+      preLoaderRoute: typeof PatientPatientIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/evolution/$patientId': {
+      id: '/evolution/$patientId'
+      path: '/evolution/$patientId'
+      fullPath: '/evolution/$patientId'
+      preLoaderRoute: typeof EvolutionPatientIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/hours': {
+      id: '/admin/hours'
+      path: '/hours'
+      fullPath: '/admin/hours'
+      preLoaderRoute: typeof AdminHoursRouteImport
+      parentRoute: typeof AdminRoute
+    }
   }
 }
 
+interface AdminRouteChildren {
+  AdminHoursRoute: typeof AdminHoursRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminHoursRoute: AdminHoursRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
+  ForumRoute: ForumRoute,
+  ParentRoute: ParentRoute,
+  EvolutionPatientIdRoute: EvolutionPatientIdRoute,
+  PatientPatientIdRoute: PatientPatientIdRoute,
+  SessionPatientIdRoute: SessionPatientIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
