@@ -239,3 +239,16 @@ export const forumThreads = [
     preview: "Alguém tem sugestão de planilha simplificada para registro no parquinho?",
   },
 ];
+
+export const appointments = [
+  { id: "s1", time: "08:00", patient: "Helena Costa", therapist: "Carla Mendes", room: "Sala 1", type: "Fonoaudiologia", status: "Concluída" },
+  { id: "s2", time: "09:00", patient: "Bento Oliveira", therapist: "Diego Ramos", room: "Sala 3", type: "Psicologia", status: "Concluída" },
+  { id: "s3", time: "10:00", patient: "Lucas Almeida", therapist: "Ana Beatriz Lopes", room: "Sala 2", type: "ABA Intensivo", status: "Em andamento" },
+  { id: "s4", time: "11:00", patient: "Sofia Pereira", therapist: "Fernanda Souza", room: "Sala T.O.", type: "Terapia Ocupacional", status: "Agendada" },
+  { id: "s5", time: "14:00", patient: "Lucas Almeida", therapist: "Ana Beatriz Lopes", room: "Sala 2", type: "ABA Intensivo", status: "Agendada" },
+  { id: "s6", time: "15:30", patient: "Sofia Pereira", therapist: "Ana Beatriz Lopes", room: "Sala 2", type: "ABA Intensivo", status: "Agendada" },
+  { id: "s7", time: "16:30", patient: "Bento Oliveira", therapist: "Carla Mendes", room: "Sala 1", type: "Fonoaudiologia", status: "Agendada" },
+  { id: "s8", time: "17:30", patient: "Helena Costa", therapist: "Diego Ramos", room: "Sala 3", type: "Psicologia", status: "Cancelada" },
+];
+
+export const weekDays = ["Seg 25", "Ter 26", "Qua 27", "Qui 28", "Sex 29"];
