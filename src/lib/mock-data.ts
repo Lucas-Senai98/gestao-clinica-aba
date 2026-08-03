@@ -252,3 +252,85 @@ export const appointments = [
 ];
 
 export const weekDays = ["Seg 25", "Ter 26", "Qua 27", "Qui 28", "Sex 29"];
+
+// ---- Módulo PEI (Plano de Ensino Individualizado) ----
+export type PeiStatus = "Em andamento" | "Atingida" | "Suspensa";
+
+export const peiGoals = [
+  {
+    id: "g1",
+    area: "Comunicação",
+    goal: "Solicitar 10 itens preferidos com fala funcional",
+    criteria: "80% de acerto em 3 sessões consecutivas",
+    baseline: 20,
+    current: 62,
+    target: 80,
+    status: "Em andamento" as PeiStatus,
+    responsible: "Ana Beatriz Lopes",
+    review: "15/06/25",
+  },
+  {
+    id: "g2",
+    area: "Habilidades Sociais",
+    goal: "Aguardar a vez em jogo de turnos por 3 rodadas",
+    criteria: "3 rodadas sem suporte físico",
+    baseline: 10,
+    current: 45,
+    target: 75,
+    status: "Em andamento" as PeiStatus,
+    responsible: "Diego Ramos",
+    review: "10/06/25",
+  },
+  {
+    id: "g3",
+    area: "Autonomia",
+    goal: "Lavar as mãos com encadeamento completo",
+    criteria: "Independência em 5 tentativas",
+    baseline: 30,
+    current: 90,
+    target: 85,
+    status: "Atingida" as PeiStatus,
+    responsible: "Fernanda Souza",
+    review: "Concluída em 28/04/25",
+  },
+  {
+    id: "g4",
+    area: "Pré-Acadêmicas",
+    goal: "Identificar números de 1 a 10",
+    criteria: "90% de acerto em 2 sessões",
+    baseline: 15,
+    current: 38,
+    target: 90,
+    status: "Em andamento" as PeiStatus,
+    responsible: "Ana Beatriz Lopes",
+    review: "20/06/25",
+  },
+  {
+    id: "g5",
+    area: "Comportamento",
+    goal: "Reduzir fuga de demanda para até 2 episódios/sessão",
+    criteria: "Média semanal ≤ 2 episódios",
+    baseline: 70,
+    current: 55,
+    target: 30,
+    status: "Suspensa" as PeiStatus,
+    responsible: "Supervisão",
+    review: "Reavaliar protocolo",
+  },
+];
+
+export const peiHistory = [
+  { date: "02/05/25", author: "Ana Beatriz", note: "Aumentado critério de mando para 10 itens." },
+  { date: "18/04/25", author: "Supervisão", note: "Meta de autonomia atingida — generalização para casa." },
+  { date: "05/04/25", author: "Diego Ramos", note: "Inserida meta de turnos com pares." },
+];
+
+// ---- Módulo Aprovações (Admin) ----
+export const pendingApprovals = [
+  { id: "ap1", type: "Folha de sessão", detail: "Lucas Almeida — 27/05 14:00", requester: "Ana Beatriz Lopes", when: "há 20 min", priority: "Alta" },
+  { id: "ap2", type: "Alteração de PEI", detail: "Sofia Pereira — nova meta de tato", requester: "Ana Beatriz Lopes", when: "há 2 h", priority: "Média" },
+  { id: "ap3", type: "Remarcação", detail: "Bento Oliveira — mover para Qui 09:00", requester: "Diego Ramos", when: "há 3 h", priority: "Média" },
+  { id: "ap4", type: "Horas extras", detail: "Carla Mendes — +2h em 26/05", requester: "Carla Mendes", when: "ontem", priority: "Baixa" },
+  { id: "ap5", type: "Relatório trimestral", detail: "Helena Costa — devolutiva família", requester: "Fernanda Souza", when: "ontem", priority: "Alta" },
+  { id: "ap6", type: "Novo paciente", detail: "Cadastro: Miguel Tavares (3a)", requester: "Recepção", when: "2 dias", priority: "Alta" },
+];
