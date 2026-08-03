@@ -27,14 +27,16 @@ type NavItem = { to: string; label: string; icon: typeof Home };
 
 const navByRole: Record<string, NavItem[]> = {
   therapist: [
-    { to: "/", label: "Meus pacientes", icon: Users },
-    { to: "/patient/p1", label: "Prontuário", icon: ClipboardList },
+    { to: "/", label: "Hoje", icon: Home },
+    { to: "/agenda", label: "Agenda", icon: CalendarDays },
+    { to: "/patients", label: "Pacientes", icon: Users },
     { to: "/forum", label: "Fórum", icon: MessageSquare },
   ],
   admin: [
     { to: "/admin", label: "Dashboard", icon: Home },
+    { to: "/agenda", label: "Agenda", icon: CalendarDays },
+    { to: "/patients", label: "Pacientes", icon: Users },
     { to: "/admin/hours", label: "Horas", icon: Clock },
-    { to: "/patient/p1", label: "Prontuários", icon: ClipboardList },
     { to: "/forum", label: "Fórum", icon: MessageSquare },
   ],
   parent: [
