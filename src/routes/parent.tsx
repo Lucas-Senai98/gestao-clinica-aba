@@ -7,6 +7,16 @@ import { Badge } from "@/components/ui/badge";
 import { Bell, Heart, Smile, ThumbsUp } from "lucide-react";
 
 export const Route = createFileRoute("/parent")({
+  head: () => ({
+    meta: [
+      { title: "Portal dos Responsáveis — Gestão Clínica ABA" },
+      { name: "description", content: "Devolutivas diárias das sessões, marcos alcançados e quadro de avisos da clínica para famílias." },
+      { property: "og:title", content: "Portal dos Responsáveis — Gestão Clínica ABA" },
+      { property: "og:description", content: "Acompanhe as devolutivas das sessões e os avisos da clínica." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   component: ParentFeed,
 });
 

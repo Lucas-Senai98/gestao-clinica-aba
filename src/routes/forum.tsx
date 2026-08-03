@@ -11,6 +11,16 @@ import { MessageSquare, Send, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/forum")({
+  head: () => ({
+    meta: [
+      { title: "Fórum Clínico Interno — Gestão Clínica ABA" },
+      { name: "description", content: "Discussão de casos clínicos e reuniões semanais da equipe em threads internas seguras." },
+      { property: "og:title", content: "Fórum Clínico Interno — Gestão Clínica ABA" },
+      { property: "og:description", content: "Threads internas para discussão de casos e reuniões da equipe." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   component: Forum,
 });
 

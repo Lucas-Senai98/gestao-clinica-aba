@@ -9,6 +9,16 @@ import { Badge } from "@/components/ui/badge";
 import { Play, Calendar, TrendingUp, ChevronRight } from "lucide-react";
 
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "Meus Pacientes — Gestão Clínica ABA" },
+      { name: "description", content: "Painel do terapeuta ABA: pacientes do dia, início rápido de sessão e acesso ao prontuário eletrônico." },
+      { property: "og:title", content: "Meus Pacientes — Gestão Clínica ABA" },
+      { property: "og:description", content: "Painel do terapeuta com sessões do dia e acesso rápido ao registro ABA." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   component: Home,
 });
 

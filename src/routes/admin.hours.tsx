@@ -13,6 +13,16 @@ import {
 import { Badge } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/admin/hours")({
+  head: () => ({
+    meta: [
+      { title: "Controle de Horas — Gestão Clínica ABA" },
+      { name: "description", content: "Relatório de RH com horas trabalhadas e sessões realizadas por terapeuta, dia a dia." },
+      { property: "og:title", content: "Controle de Horas — Gestão Clínica ABA" },
+      { property: "og:description", content: "Horas trabalhadas e sessões por terapeuta, organizadas por dia." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   component: HoursPage,
 });
 

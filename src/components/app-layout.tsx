@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Home,
   Users,
-  ClipboardList,
+  CalendarDays,
   MessageSquare,
   Clock,
   LineChart,
@@ -27,14 +27,16 @@ type NavItem = { to: string; label: string; icon: typeof Home };
 
 const navByRole: Record<string, NavItem[]> = {
   therapist: [
-    { to: "/", label: "Meus pacientes", icon: Users },
-    { to: "/patient/p1", label: "Prontuário", icon: ClipboardList },
+    { to: "/", label: "Hoje", icon: Home },
+    { to: "/agenda", label: "Agenda", icon: CalendarDays },
+    { to: "/patients", label: "Pacientes", icon: Users },
     { to: "/forum", label: "Fórum", icon: MessageSquare },
   ],
   admin: [
     { to: "/admin", label: "Dashboard", icon: Home },
+    { to: "/agenda", label: "Agenda", icon: CalendarDays },
+    { to: "/patients", label: "Pacientes", icon: Users },
     { to: "/admin/hours", label: "Horas", icon: Clock },
-    { to: "/patient/p1", label: "Prontuários", icon: ClipboardList },
     { to: "/forum", label: "Fórum", icon: MessageSquare },
   ],
   parent: [
@@ -144,7 +146,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
       {/* Mobile bottom tabs */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-background/95 backdrop-blur border-t border-border">
-        <div className="grid grid-cols-4 gap-1 px-2 py-1.5">
+        <div className="grid grid-cols-5 gap-1 px-2 py-1.5">
           {items.slice(0, 4).map((it) => {
             const active = pathname === it.to || (it.to !== "/" && pathname.startsWith(it.to));
             return (
