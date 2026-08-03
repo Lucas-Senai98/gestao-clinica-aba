@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ParentRouteImport } from './routes/parent'
 import { Route as ForumRouteImport } from './routes/forum'
+import { Route as AgendaRouteImport } from './routes/agenda'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SessionPatientIdRouteImport } from './routes/session.$patientId'
@@ -26,6 +27,11 @@ const ParentRoute = ParentRouteImport.update({
 const ForumRoute = ForumRouteImport.update({
   id: '/forum',
   path: '/forum',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgendaRoute = AgendaRouteImport.update({
+  id: '/agenda',
+  path: '/agenda',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -62,6 +68,7 @@ const AdminHoursRoute = AdminHoursRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/agenda': typeof AgendaRoute
   '/forum': typeof ForumRoute
   '/parent': typeof ParentRoute
   '/admin/hours': typeof AdminHoursRoute
@@ -72,6 +79,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/agenda': typeof AgendaRoute
   '/forum': typeof ForumRoute
   '/parent': typeof ParentRoute
   '/admin/hours': typeof AdminHoursRoute
@@ -83,6 +91,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/agenda': typeof AgendaRoute
   '/forum': typeof ForumRoute
   '/parent': typeof ParentRoute
   '/admin/hours': typeof AdminHoursRoute
@@ -95,6 +104,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/agenda'
     | '/forum'
     | '/parent'
     | '/admin/hours'
@@ -105,6 +115,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin'
+    | '/agenda'
     | '/forum'
     | '/parent'
     | '/admin/hours'
@@ -115,6 +126,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/agenda'
     | '/forum'
     | '/parent'
     | '/admin/hours'
@@ -126,6 +138,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
+  AgendaRoute: typeof AgendaRoute
   ForumRoute: typeof ForumRoute
   ParentRoute: typeof ParentRoute
   EvolutionPatientIdRoute: typeof EvolutionPatientIdRoute
@@ -147,6 +160,13 @@ declare module '@tanstack/react-router' {
       path: '/forum'
       fullPath: '/forum'
       preLoaderRoute: typeof ForumRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agenda': {
+      id: '/agenda'
+      path: '/agenda'
+      fullPath: '/agenda'
+      preLoaderRoute: typeof AgendaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -207,6 +227,7 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
+  AgendaRoute: AgendaRoute,
   ForumRoute: ForumRoute,
   ParentRoute: ParentRoute,
   EvolutionPatientIdRoute: EvolutionPatientIdRoute,
@@ -216,13 +237,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
