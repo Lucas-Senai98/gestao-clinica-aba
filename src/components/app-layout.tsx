@@ -7,10 +7,10 @@ import {
   Clock,
   LineChart,
   Bell,
-  Sparkles,
   Stethoscope,
   ShieldCheck,
   Heart,
+  ClipboardCheck,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useRole } from "@/lib/role-context";
@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import logo from "@/assets/logo-gize.png";
 
 type NavItem = { to: string; label: string; icon: typeof Home };
 
@@ -30,10 +31,12 @@ const navByRole: Record<string, NavItem[]> = {
     { to: "/", label: "Hoje", icon: Home },
     { to: "/agenda", label: "Agenda", icon: CalendarDays },
     { to: "/patients", label: "Pacientes", icon: Users },
+    { to: "/pei/p1", label: "PEI", icon: ClipboardCheck },
     { to: "/forum", label: "Fórum", icon: MessageSquare },
   ],
   admin: [
     { to: "/admin", label: "Dashboard", icon: Home },
+    { to: "/admin/approvals", label: "Aprovações", icon: ClipboardCheck },
     { to: "/agenda", label: "Agenda", icon: CalendarDays },
     { to: "/patients", label: "Pacientes", icon: Users },
     { to: "/admin/hours", label: "Horas", icon: Clock },
@@ -44,6 +47,7 @@ const navByRole: Record<string, NavItem[]> = {
     { to: "/parent#avisos", label: "Avisos", icon: Bell },
   ],
 };
+
 
 const roleIcon = {
   admin: ShieldCheck,
