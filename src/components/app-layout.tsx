@@ -2,6 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Home,
   Users,
+  CalendarDays,
   ClipboardList,
   MessageSquare,
   Clock,
