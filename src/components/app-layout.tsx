@@ -3,7 +3,6 @@ import {
   Home,
   Users,
   CalendarDays,
-  ClipboardList,
   MessageSquare,
   Clock,
   LineChart,
@@ -147,7 +146,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
       {/* Mobile bottom tabs */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-background/95 backdrop-blur border-t border-border">
-        <div className="grid grid-cols-4 gap-1 px-2 py-1.5">
+        <div className="grid grid-cols-5 gap-1 px-2 py-1.5">
           {items.slice(0, 4).map((it) => {
             const active = pathname === it.to || (it.to !== "/" && pathname.startsWith(it.to));
             return (
