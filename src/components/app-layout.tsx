@@ -116,9 +116,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
       {/* Mobile header */}
       <header className="md:hidden sticky top-0 z-30 flex items-center justify-between gap-2 px-4 py-3 bg-background/85 backdrop-blur border-b border-border">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="size-8 rounded-lg gradient-brand grid place-items-center text-primary-foreground">
-            <Sparkles className="size-4" />
+          <div className="size-8 rounded-lg bg-primary-soft grid place-items-center overflow-hidden">
+            <img src={logo} alt="Logomarca GiZé's Clínica" width={512} height={512} loading="lazy" className="size-6 object-contain" />
           </div>
+
           <p className="text-sm font-semibold truncate">GiZé's ABA</p>
         </div>
         <Select value={role} onValueChange={(v) => setRole(v as never)}>
