@@ -25,6 +25,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { TrendingUp, FileText } from "lucide-react";
 
 export const Route = createFileRoute("/patient/$patientId")({
+  head: () => ({
+    meta: [
+      { title: "Prontuário Eletrônico ABA — Gestão Clínica ABA" },
+      { name: "description", content: "Prontuário completo: repertório por área, reforçadores, estereotipias e checklist clínico do paciente." },
+      { property: "og:title", content: "Prontuário Eletrônico ABA — Gestão Clínica ABA" },
+      { property: "og:description", content: "Repertório, reforçadores, estereotipias e checklist clínico do paciente." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   component: PatientPEP,
 });
 

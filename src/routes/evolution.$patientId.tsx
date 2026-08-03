@@ -19,6 +19,16 @@ import {
 } from "recharts";
 
 export const Route = createFileRoute("/evolution/$patientId")({
+  head: () => ({
+    meta: [
+      { title: "Evolução do Paciente — Gestão Clínica ABA" },
+      { name: "description", content: "Gráficos de evolução: desempenho mensal, respostas Sim/Não por alvo e frequência versus intensidade." },
+      { property: "og:title", content: "Evolução do Paciente — Gestão Clínica ABA" },
+      { property: "og:description", content: "Gráficos de desempenho, acertos por alvo e intensidade comportamental." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   component: Evolution,
 });
 

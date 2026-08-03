@@ -15,6 +15,16 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/session/$patientId")({
+  head: () => ({
+    meta: [
+      { title: "Folha de Registro de Sessão ABA — Gestão Clínica ABA" },
+      { name: "description", content: "Diário de sessão ABA mobile-first: comportamentos, programas de ensino, reforçadores e observações." },
+      { property: "og:title", content: "Folha de Registro de Sessão ABA — Gestão Clínica ABA" },
+      { property: "og:description", content: "Registre comportamentos, tentativas e acertos direto da sessão." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   component: SessionForm,
 });
 

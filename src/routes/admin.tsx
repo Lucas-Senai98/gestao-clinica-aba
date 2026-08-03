@@ -16,6 +16,16 @@ import {
 } from "recharts";
 
 export const Route = createFileRoute("/admin")({
+  head: () => ({
+    meta: [
+      { title: "Dashboard da Supervisão — Gestão Clínica ABA" },
+      { name: "description", content: "Indicadores da clínica ABA: pacientes ativos, equipe terapêutica, aprovações pendentes e sessões da semana." },
+      { property: "og:title", content: "Dashboard da Supervisão — Gestão Clínica ABA" },
+      { property: "og:description", content: "Visão geral em tempo real da clínica: equipe, pacientes e sessões." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   component: AdminDashboard,
 });
 
