@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PatientsRouteImport } from './routes/patients'
 import { Route as ParentRouteImport } from './routes/parent'
 import { Route as ForumRouteImport } from './routes/forum'
 import { Route as AgendaRouteImport } from './routes/agenda'
@@ -19,6 +20,11 @@ import { Route as PatientPatientIdRouteImport } from './routes/patient.$patientI
 import { Route as EvolutionPatientIdRouteImport } from './routes/evolution.$patientId'
 import { Route as AdminHoursRouteImport } from './routes/admin.hours'
 
+const PatientsRoute = PatientsRouteImport.update({
+  id: '/patients',
+  path: '/patients',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ParentRoute = ParentRouteImport.update({
   id: '/parent',
   path: '/parent',
@@ -71,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/agenda': typeof AgendaRoute
   '/forum': typeof ForumRoute
   '/parent': typeof ParentRoute
+  '/patients': typeof PatientsRoute
   '/admin/hours': typeof AdminHoursRoute
   '/evolution/$patientId': typeof EvolutionPatientIdRoute
   '/patient/$patientId': typeof PatientPatientIdRoute
@@ -82,6 +89,7 @@ export interface FileRoutesByTo {
   '/agenda': typeof AgendaRoute
   '/forum': typeof ForumRoute
   '/parent': typeof ParentRoute
+  '/patients': typeof PatientsRoute
   '/admin/hours': typeof AdminHoursRoute
   '/evolution/$patientId': typeof EvolutionPatientIdRoute
   '/patient/$patientId': typeof PatientPatientIdRoute
@@ -94,6 +102,7 @@ export interface FileRoutesById {
   '/agenda': typeof AgendaRoute
   '/forum': typeof ForumRoute
   '/parent': typeof ParentRoute
+  '/patients': typeof PatientsRoute
   '/admin/hours': typeof AdminHoursRoute
   '/evolution/$patientId': typeof EvolutionPatientIdRoute
   '/patient/$patientId': typeof PatientPatientIdRoute
@@ -107,6 +116,7 @@ export interface FileRouteTypes {
     | '/agenda'
     | '/forum'
     | '/parent'
+    | '/patients'
     | '/admin/hours'
     | '/evolution/$patientId'
     | '/patient/$patientId'
@@ -118,6 +128,7 @@ export interface FileRouteTypes {
     | '/agenda'
     | '/forum'
     | '/parent'
+    | '/patients'
     | '/admin/hours'
     | '/evolution/$patientId'
     | '/patient/$patientId'
@@ -129,6 +140,7 @@ export interface FileRouteTypes {
     | '/agenda'
     | '/forum'
     | '/parent'
+    | '/patients'
     | '/admin/hours'
     | '/evolution/$patientId'
     | '/patient/$patientId'
@@ -141,6 +153,7 @@ export interface RootRouteChildren {
   AgendaRoute: typeof AgendaRoute
   ForumRoute: typeof ForumRoute
   ParentRoute: typeof ParentRoute
+  PatientsRoute: typeof PatientsRoute
   EvolutionPatientIdRoute: typeof EvolutionPatientIdRoute
   PatientPatientIdRoute: typeof PatientPatientIdRoute
   SessionPatientIdRoute: typeof SessionPatientIdRoute
@@ -148,6 +161,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/patients': {
+      id: '/patients'
+      path: '/patients'
+      fullPath: '/patients'
+      preLoaderRoute: typeof PatientsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/parent': {
       id: '/parent'
       path: '/parent'
@@ -230,6 +250,7 @@ const rootRouteChildren: RootRouteChildren = {
   AgendaRoute: AgendaRoute,
   ForumRoute: ForumRoute,
   ParentRoute: ParentRoute,
+  PatientsRoute: PatientsRoute,
   EvolutionPatientIdRoute: EvolutionPatientIdRoute,
   PatientPatientIdRoute: PatientPatientIdRoute,
   SessionPatientIdRoute: SessionPatientIdRoute,
