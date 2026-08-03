@@ -66,9 +66,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
       {/* Desktop sidebar */}
       <aside className="hidden md:flex fixed inset-y-0 left-0 w-64 flex-col border-r border-sidebar-border bg-sidebar z-30">
         <div className="px-5 py-5 flex items-center gap-2">
-          <div className="size-9 rounded-xl gradient-brand grid place-items-center text-primary-foreground shadow-sm">
-            <Sparkles className="size-5" />
+          <div className="size-9 rounded-xl bg-primary-soft grid place-items-center shadow-sm overflow-hidden">
+            <img src={logo} alt="Logomarca GiZé's Clínica" width={512} height={512} loading="lazy" className="size-7 object-contain" />
           </div>
+
           <div>
             <p className="text-sm font-semibold leading-tight">GiZé's Clínica</p>
             <p className="text-[11px] text-muted-foreground leading-tight">Gestão ABA</p>
