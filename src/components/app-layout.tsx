@@ -8,7 +8,9 @@ import {
   LineChart,
   Bell,
   Stethoscope,
+  FileText,
   ShieldCheck,
+
   Heart,
   ClipboardCheck,
 } from "lucide-react";
@@ -32,6 +34,7 @@ const navByRole: Record<string, NavItem[]> = {
     { to: "/agenda", label: "Agenda", icon: CalendarDays },
     { to: "/patients", label: "Pacientes", icon: Users },
     { to: "/pei/p1", label: "PEI", icon: ClipboardCheck },
+    { to: "/reports", label: "Relatórios", icon: FileText },
     { to: "/forum", label: "Fórum", icon: MessageSquare },
   ],
   admin: [
@@ -40,13 +43,16 @@ const navByRole: Record<string, NavItem[]> = {
     { to: "/agenda", label: "Agenda", icon: CalendarDays },
     { to: "/patients", label: "Pacientes", icon: Users },
     { to: "/admin/hours", label: "Horas", icon: Clock },
+    { to: "/reports", label: "Relatórios", icon: FileText },
     { to: "/forum", label: "Fórum", icon: MessageSquare },
   ],
   parent: [
     { to: "/parent", label: "Devolutivas", icon: Heart },
+    { to: "/parent/agenda", label: "Agenda", icon: CalendarDays },
     { to: "/parent#avisos", label: "Avisos", icon: Bell },
   ],
 };
+
 
 
 const roleIcon = {
