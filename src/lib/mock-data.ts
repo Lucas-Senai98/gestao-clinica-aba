@@ -366,3 +366,29 @@ export const homePractices = [
   { id: "hp2", title: "Nomear 3 figuras no livro à noite", freq: "1x ao dia", done: false },
   { id: "hp3", title: "Lavar as mãos com apoio verbal apenas", freq: "Antes das refeições", done: true },
 ];
+
+// ---- Módulo Equipe (Admin) ----
+export const teamMembers = [
+  { id: "tm1", name: "Ana Beatriz Lopes", avatar: "AB", role: "Terapeuta ABA", registry: "CRP 06/12345", caseload: 8, weeklyHours: 32, status: "Ativa", email: "ana.lopes@gizeclinica.com.br" },
+  { id: "tm2", name: "Carla Mendes", avatar: "CM", role: "Fonoaudióloga", registry: "CRFa 2-98765", caseload: 6, weeklyHours: 24, status: "Ativa", email: "carla.mendes@gizeclinica.com.br" },
+  { id: "tm3", name: "Diego Ramos", avatar: "DR", role: "Psicólogo", registry: "CRP 06/54321", caseload: 7, weeklyHours: 30, status: "Ativa", email: "diego.ramos@gizeclinica.com.br" },
+  { id: "tm4", name: "Fernanda Souza", avatar: "FS", role: "Terapeuta Ocupacional", registry: "CREFITO 3/11223", caseload: 5, weeklyHours: 20, status: "Férias", email: "fernanda.souza@gizeclinica.com.br" },
+  { id: "tm5", name: "Marina Duarte", avatar: "MD", role: "Supervisora Clínica", registry: "CRP 06/77889", caseload: 3, weeklyHours: 36, status: "Ativa", email: "marina.duarte@gizeclinica.com.br" },
+  { id: "tm6", name: "Rafael Nunes", avatar: "RN", role: "Aplicador ABA", registry: "Em formação", caseload: 4, weeklyHours: 18, status: "Inativo", email: "rafael.nunes@gizeclinica.com.br" },
+];
+
+export const teamCertifications = [
+  { member: "Ana Beatriz Lopes", cert: "Supervisão em ABA (400h)", validity: "12/2026" },
+  { member: "Carla Mendes", cert: "PECS Nível 1", validity: "08/2026" },
+  { member: "Diego Ramos", cert: "Denver Model", validity: "03/2027" },
+  { member: "Fernanda Souza", cert: "Integração Sensorial", validity: "11/2025" },
+];
+
+// ---- Notificações ----
+export const notifications = [
+  { id: "n1", title: "Folha de sessão pendente", body: "Lucas Almeida — sessão de 27/05 às 14:00 sem registro.", when: "há 15 min", kind: "alerta", read: false },
+  { id: "n2", title: "PEI revisado pela supervisão", body: "Meta de comunicação de Sofia Pereira aprovada.", when: "há 2 h", kind: "info", read: false },
+  { id: "n3", title: "Nova mensagem no fórum", body: "Carla Mendes respondeu em 'Manejo de fuga de demanda'.", when: "há 3 h", kind: "info", read: true },
+  { id: "n4", title: "Relatório aguardando assinatura", body: "Relatório trimestral de Lucas Almeida.", when: "ontem", kind: "alerta", read: true },
+  { id: "n5", title: "Recesso agendado", body: "Clínica fechada em 29 e 30/05.", when: "2 dias", kind: "aviso", read: true },
+];
