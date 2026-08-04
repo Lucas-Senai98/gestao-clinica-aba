@@ -9,7 +9,9 @@ import {
   Bell,
   Stethoscope,
   FileText,
+  UserCog,
   ShieldCheck,
+
 
   Heart,
   ClipboardCheck,
@@ -36,15 +38,18 @@ const navByRole: Record<string, NavItem[]> = {
     { to: "/pei/p1", label: "PEI", icon: ClipboardCheck },
     { to: "/reports", label: "Relatórios", icon: FileText },
     { to: "/forum", label: "Fórum", icon: MessageSquare },
+    { to: "/notifications", label: "Notificações", icon: Bell },
   ],
   admin: [
     { to: "/admin", label: "Dashboard", icon: Home },
     { to: "/admin/approvals", label: "Aprovações", icon: ClipboardCheck },
     { to: "/agenda", label: "Agenda", icon: CalendarDays },
     { to: "/patients", label: "Pacientes", icon: Users },
+    { to: "/admin/team", label: "Equipe", icon: UserCog },
     { to: "/admin/hours", label: "Horas", icon: Clock },
     { to: "/reports", label: "Relatórios", icon: FileText },
     { to: "/forum", label: "Fórum", icon: MessageSquare },
+    { to: "/notifications", label: "Notificações", icon: Bell },
   ],
   parent: [
     { to: "/parent", label: "Devolutivas", icon: Heart },
@@ -52,6 +57,7 @@ const navByRole: Record<string, NavItem[]> = {
     { to: "/parent#avisos", label: "Avisos", icon: Bell },
   ],
 };
+
 
 
 
