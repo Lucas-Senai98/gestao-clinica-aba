@@ -334,3 +334,35 @@ export const pendingApprovals = [
   { id: "ap5", type: "Relatório trimestral", detail: "Helena Costa — devolutiva família", requester: "Fernanda Souza", when: "ontem", priority: "Alta" },
   { id: "ap6", type: "Novo paciente", detail: "Cadastro: Miguel Tavares (3a)", requester: "Recepção", when: "2 dias", priority: "Alta" },
 ];
+
+// ---- Módulo Relatórios ----
+export const reportTemplates = [
+  { id: "rt1", name: "Relatório trimestral de evolução", scope: "Família + convênio", pages: 6 },
+  { id: "rt2", name: "Devolutiva de avaliação inicial", scope: "Família", pages: 8 },
+  { id: "rt3", name: "Relatório para escola", scope: "Instituição de ensino", pages: 3 },
+  { id: "rt4", name: "Parecer para convênio / plano de saúde", scope: "Operadora", pages: 4 },
+];
+
+export const generatedReports = [
+  { id: "gr1", patient: "Lucas Almeida", template: "Relatório trimestral de evolução", author: "Ana Beatriz Lopes", date: "26/05/25", status: "Aguardando assinatura" },
+  { id: "gr2", patient: "Helena Costa", template: "Devolutiva de avaliação inicial", author: "Fernanda Souza", date: "22/05/25", status: "Enviado" },
+  { id: "gr3", patient: "Sofia Pereira", template: "Relatório para escola", author: "Carla Mendes", date: "19/05/25", status: "Rascunho" },
+  { id: "gr4", patient: "Bento Oliveira", template: "Parecer para convênio / plano de saúde", author: "Diego Ramos", date: "14/05/25", status: "Enviado" },
+];
+
+// ---- Portal dos pais: agenda e presença ----
+export const parentSchedule = [
+  { id: "ps1", day: "Hoje", date: "27/05", time: "14:00", type: "ABA Intensivo", therapist: "Ana Beatriz Lopes", status: "Confirmada" },
+  { id: "ps2", day: "Quarta", date: "28/05", time: "10:00", type: "Fonoaudiologia", therapist: "Carla Mendes", status: "Confirmada" },
+  { id: "ps3", day: "Quinta", date: "29/05", time: "—", type: "Recesso — Corpus Christi", therapist: "—", status: "Cancelada" },
+  { id: "ps4", day: "Segunda", date: "02/06", time: "14:00", type: "ABA Intensivo", therapist: "Ana Beatriz Lopes", status: "Agendada" },
+  { id: "ps5", day: "Terça", date: "03/06", time: "09:00", type: "Terapia Ocupacional", therapist: "Fernanda Souza", status: "Agendada" },
+];
+
+export const parentAttendance = { presencas: 18, faltas: 2, remarcadas: 3, mes: "Maio/2025" };
+
+export const homePractices = [
+  { id: "hp1", title: "Pedir 'mais' antes de entregar o brinquedo", freq: "3x ao dia", done: true },
+  { id: "hp2", title: "Nomear 3 figuras no livro à noite", freq: "1x ao dia", done: false },
+  { id: "hp3", title: "Lavar as mãos com apoio verbal apenas", freq: "Antes das refeições", done: true },
+];
