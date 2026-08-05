@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Search, ChevronRight, LineChart, UserPlus } from "lucide-react";
+import { Search, ChevronRight, LineChart, UserPlus, Pencil } from "lucide-react";
 
 export const Route = createFileRoute("/patients/")({
   head: () => ({
@@ -91,6 +91,12 @@ function PatientsList() {
                       <LineChart className="size-3.5" />
                     </Link>
                   </Button>
+                  <Button asChild size="sm" variant="outline">
+                    <Link to="/patients/$patientId" params={{ patientId: p.id }}>
+                      <Pencil className="size-3.5" />
+                    </Link>
+                  </Button>
+
                   <Button asChild size="sm">
                     <Link to="/patient/$patientId" params={{ patientId: p.id }}>
                       Prontuário <ChevronRight className="size-3.5" />
