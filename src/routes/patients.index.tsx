@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Search, ChevronRight, LineChart, UserPlus } from "lucide-react";
+import { Search, ChevronRight, LineChart, UserPlus, Pencil } from "lucide-react";
 
 export const Route = createFileRoute("/patients/")({
   head: () => ({
