@@ -8,9 +8,9 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Search, ChevronRight, LineChart } from "lucide-react";
+import { Search, ChevronRight, LineChart, UserPlus } from "lucide-react";
 
-export const Route = createFileRoute("/patients")({
+export const Route = createFileRoute("/patients/")({
   head: () => ({
     meta: [
       { title: "Pacientes — Gestão Clínica ABA" },
@@ -41,14 +41,21 @@ function PatientsList() {
     <AppLayout>
       <PageHeader title="Pacientes" subtitle="Todos os pacientes ativos da clínica." />
 
-      <div className="relative mb-4 max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-        <Input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Buscar por nome, diagnóstico ou responsável"
-          className="pl-9"
-        />
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[220px] max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar por nome, diagnóstico ou responsável"
+            className="pl-9"
+          />
+        </div>
+        <Button asChild>
+          <Link to="/patients/new">
+            <UserPlus className="size-4" /> Novo paciente
+          </Link>
+        </Button>
       </div>
 
       <div className="space-y-2">
