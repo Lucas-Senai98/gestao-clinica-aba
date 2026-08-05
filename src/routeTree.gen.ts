@@ -78,9 +78,9 @@ const PeiPatientIdRoute = PeiPatientIdRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const PatientsNewRoute = PatientsNewRouteImport.update({
-  id: '/patients/new',
-  path: '/patients/new',
-  getParentRoute: () => rootRouteImport,
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => PatientsRoute,
 } as any)
 const PatientPatientIdRoute = PatientPatientIdRouteImport.update({
   id: '/patient/$patientId',
@@ -241,7 +241,6 @@ export interface RootRouteChildren {
   ReportsRoute: typeof ReportsRoute
   EvolutionPatientIdRoute: typeof EvolutionPatientIdRoute
   PatientPatientIdRoute: typeof PatientPatientIdRoute
-  PatientsNewRoute: typeof PatientsNewRoute
   PeiPatientIdRoute: typeof PeiPatientIdRoute
   SessionPatientIdRoute: typeof SessionPatientIdRoute
   PatientsIndexRoute: typeof PatientsIndexRoute
@@ -321,10 +320,10 @@ declare module '@tanstack/react-router' {
     }
     '/patients/new': {
       id: '/patients/new'
-      path: '/patients/new'
+      path: '/new'
       fullPath: '/patients/new'
       preLoaderRoute: typeof PatientsNewRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof PatientsRoute
     }
     '/patient/$patientId': {
       id: '/patient/$patientId'
@@ -406,7 +405,6 @@ const rootRouteChildren: RootRouteChildren = {
   ReportsRoute: ReportsRoute,
   EvolutionPatientIdRoute: EvolutionPatientIdRoute,
   PatientPatientIdRoute: PatientPatientIdRoute,
-  PatientsNewRoute: PatientsNewRoute,
   PeiPatientIdRoute: PeiPatientIdRoute,
   SessionPatientIdRoute: SessionPatientIdRoute,
   PatientsIndexRoute: PatientsIndexRoute,
@@ -414,3 +412,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
