@@ -91,6 +91,12 @@ function PatientsList() {
                       <LineChart className="size-3.5" />
                     </Link>
                   </Button>
+                  <Button asChild size="sm" variant="outline">
+                    <Link to="/patients/$patientId" params={{ patientId: p.id }}>
+                      <Pencil className="size-3.5" />
+                    </Link>
+                  </Button>
+
                   <Button asChild size="sm">
                     <Link to="/patient/$patientId" params={{ patientId: p.id }}>
                       Prontuário <ChevronRight className="size-3.5" />

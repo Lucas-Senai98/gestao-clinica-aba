@@ -20,6 +20,7 @@ import { Route as PatientsIndexRouteImport } from './routes/patients.index'
 import { Route as SessionPatientIdRouteImport } from './routes/session.$patientId'
 import { Route as PeiPatientIdRouteImport } from './routes/pei.$patientId'
 import { Route as PatientsNewRouteImport } from './routes/patients.new'
+import { Route as PatientsPatientIdRouteImport } from './routes/patients.$patientId'
 import { Route as PatientPatientIdRouteImport } from './routes/patient.$patientId'
 import { Route as ParentAgendaRouteImport } from './routes/parent.agenda'
 import { Route as EvolutionPatientIdRouteImport } from './routes/evolution.$patientId'
@@ -82,6 +83,11 @@ const PatientsNewRoute = PatientsNewRouteImport.update({
   path: '/patients/new',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PatientsPatientIdRoute = PatientsPatientIdRouteImport.update({
+  id: '/patients/$patientId',
+  path: '/patients/$patientId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PatientPatientIdRoute = PatientPatientIdRouteImport.update({
   id: '/patient/$patientId',
   path: '/patient/$patientId',
@@ -127,6 +133,7 @@ export interface FileRoutesByFullPath {
   '/evolution/$patientId': typeof EvolutionPatientIdRoute
   '/parent/agenda': typeof ParentAgendaRoute
   '/patient/$patientId': typeof PatientPatientIdRoute
+  '/patients/$patientId': typeof PatientsPatientIdRoute
   '/patients/new': typeof PatientsNewRoute
   '/pei/$patientId': typeof PeiPatientIdRoute
   '/session/$patientId': typeof SessionPatientIdRoute
@@ -146,6 +153,7 @@ export interface FileRoutesByTo {
   '/evolution/$patientId': typeof EvolutionPatientIdRoute
   '/parent/agenda': typeof ParentAgendaRoute
   '/patient/$patientId': typeof PatientPatientIdRoute
+  '/patients/$patientId': typeof PatientsPatientIdRoute
   '/patients/new': typeof PatientsNewRoute
   '/pei/$patientId': typeof PeiPatientIdRoute
   '/session/$patientId': typeof SessionPatientIdRoute
@@ -166,6 +174,7 @@ export interface FileRoutesById {
   '/evolution/$patientId': typeof EvolutionPatientIdRoute
   '/parent/agenda': typeof ParentAgendaRoute
   '/patient/$patientId': typeof PatientPatientIdRoute
+  '/patients/$patientId': typeof PatientsPatientIdRoute
   '/patients/new': typeof PatientsNewRoute
   '/pei/$patientId': typeof PeiPatientIdRoute
   '/session/$patientId': typeof SessionPatientIdRoute
@@ -187,6 +196,7 @@ export interface FileRouteTypes {
     | '/evolution/$patientId'
     | '/parent/agenda'
     | '/patient/$patientId'
+    | '/patients/$patientId'
     | '/patients/new'
     | '/pei/$patientId'
     | '/session/$patientId'
@@ -206,6 +216,7 @@ export interface FileRouteTypes {
     | '/evolution/$patientId'
     | '/parent/agenda'
     | '/patient/$patientId'
+    | '/patients/$patientId'
     | '/patients/new'
     | '/pei/$patientId'
     | '/session/$patientId'
@@ -225,6 +236,7 @@ export interface FileRouteTypes {
     | '/evolution/$patientId'
     | '/parent/agenda'
     | '/patient/$patientId'
+    | '/patients/$patientId'
     | '/patients/new'
     | '/pei/$patientId'
     | '/session/$patientId'
@@ -241,6 +253,7 @@ export interface RootRouteChildren {
   ReportsRoute: typeof ReportsRoute
   EvolutionPatientIdRoute: typeof EvolutionPatientIdRoute
   PatientPatientIdRoute: typeof PatientPatientIdRoute
+  PatientsPatientIdRoute: typeof PatientsPatientIdRoute
   PatientsNewRoute: typeof PatientsNewRoute
   PeiPatientIdRoute: typeof PeiPatientIdRoute
   SessionPatientIdRoute: typeof SessionPatientIdRoute
@@ -326,6 +339,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PatientsNewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/patients/$patientId': {
+      id: '/patients/$patientId'
+      path: '/patients/$patientId'
+      fullPath: '/patients/$patientId'
+      preLoaderRoute: typeof PatientsPatientIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/patient/$patientId': {
       id: '/patient/$patientId'
       path: '/patient/$patientId'
@@ -406,6 +426,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReportsRoute: ReportsRoute,
   EvolutionPatientIdRoute: EvolutionPatientIdRoute,
   PatientPatientIdRoute: PatientPatientIdRoute,
+  PatientsPatientIdRoute: PatientsPatientIdRoute,
   PatientsNewRoute: PatientsNewRoute,
   PeiPatientIdRoute: PeiPatientIdRoute,
   SessionPatientIdRoute: SessionPatientIdRoute,
@@ -414,3 +435,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
