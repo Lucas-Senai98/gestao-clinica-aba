@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Search, ChevronRight, LineChart } from "lucide-react";
 
-export const Route = createFileRoute("/patients")({
+export const Route = createFileRoute("/patients/")({
   head: () => ({
     meta: [
       { title: "Pacientes — Gestão Clínica ABA" },

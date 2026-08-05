@@ -19,6 +19,7 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SessionPatientIdRouteImport } from './routes/session.$patientId'
 import { Route as PeiPatientIdRouteImport } from './routes/pei.$patientId'
+import { Route as PatientsNewRouteImport } from './routes/patients.new'
 import { Route as PatientPatientIdRouteImport } from './routes/patient.$patientId'
 import { Route as ParentAgendaRouteImport } from './routes/parent.agenda'
 import { Route as EvolutionPatientIdRouteImport } from './routes/evolution.$patientId'
@@ -76,6 +77,11 @@ const PeiPatientIdRoute = PeiPatientIdRouteImport.update({
   path: '/pei/$patientId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PatientsNewRoute = PatientsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => PatientsRoute,
+} as any)
 const PatientPatientIdRoute = PatientPatientIdRouteImport.update({
   id: '/patient/$patientId',
   path: '/patient/$patientId',
@@ -114,7 +120,7 @@ export interface FileRoutesByFullPath {
   '/forum': typeof ForumRoute
   '/notifications': typeof NotificationsRoute
   '/parent': typeof ParentRouteWithChildren
-  '/patients': typeof PatientsRoute
+  '/patients': typeof PatientsRouteWithChildren
   '/reports': typeof ReportsRoute
   '/admin/approvals': typeof AdminApprovalsRoute
   '/admin/hours': typeof AdminHoursRoute
@@ -122,6 +128,7 @@ export interface FileRoutesByFullPath {
   '/evolution/$patientId': typeof EvolutionPatientIdRoute
   '/parent/agenda': typeof ParentAgendaRoute
   '/patient/$patientId': typeof PatientPatientIdRoute
+  '/patients/new': typeof PatientsNewRoute
   '/pei/$patientId': typeof PeiPatientIdRoute
   '/session/$patientId': typeof SessionPatientIdRoute
 }
@@ -132,7 +139,7 @@ export interface FileRoutesByTo {
   '/forum': typeof ForumRoute
   '/notifications': typeof NotificationsRoute
   '/parent': typeof ParentRouteWithChildren
-  '/patients': typeof PatientsRoute
+  '/patients': typeof PatientsRouteWithChildren
   '/reports': typeof ReportsRoute
   '/admin/approvals': typeof AdminApprovalsRoute
   '/admin/hours': typeof AdminHoursRoute
@@ -140,6 +147,7 @@ export interface FileRoutesByTo {
   '/evolution/$patientId': typeof EvolutionPatientIdRoute
   '/parent/agenda': typeof ParentAgendaRoute
   '/patient/$patientId': typeof PatientPatientIdRoute
+  '/patients/new': typeof PatientsNewRoute
   '/pei/$patientId': typeof PeiPatientIdRoute
   '/session/$patientId': typeof SessionPatientIdRoute
 }
@@ -151,7 +159,7 @@ export interface FileRoutesById {
   '/forum': typeof ForumRoute
   '/notifications': typeof NotificationsRoute
   '/parent': typeof ParentRouteWithChildren
-  '/patients': typeof PatientsRoute
+  '/patients': typeof PatientsRouteWithChildren
   '/reports': typeof ReportsRoute
   '/admin/approvals': typeof AdminApprovalsRoute
   '/admin/hours': typeof AdminHoursRoute
@@ -159,6 +167,7 @@ export interface FileRoutesById {
   '/evolution/$patientId': typeof EvolutionPatientIdRoute
   '/parent/agenda': typeof ParentAgendaRoute
   '/patient/$patientId': typeof PatientPatientIdRoute
+  '/patients/new': typeof PatientsNewRoute
   '/pei/$patientId': typeof PeiPatientIdRoute
   '/session/$patientId': typeof SessionPatientIdRoute
 }
@@ -179,6 +188,7 @@ export interface FileRouteTypes {
     | '/evolution/$patientId'
     | '/parent/agenda'
     | '/patient/$patientId'
+    | '/patients/new'
     | '/pei/$patientId'
     | '/session/$patientId'
   fileRoutesByTo: FileRoutesByTo
@@ -197,6 +207,7 @@ export interface FileRouteTypes {
     | '/evolution/$patientId'
     | '/parent/agenda'
     | '/patient/$patientId'
+    | '/patients/new'
     | '/pei/$patientId'
     | '/session/$patientId'
   id:
@@ -215,6 +226,7 @@ export interface FileRouteTypes {
     | '/evolution/$patientId'
     | '/parent/agenda'
     | '/patient/$patientId'
+    | '/patients/new'
     | '/pei/$patientId'
     | '/session/$patientId'
   fileRoutesById: FileRoutesById
@@ -226,7 +238,7 @@ export interface RootRouteChildren {
   ForumRoute: typeof ForumRoute
   NotificationsRoute: typeof NotificationsRoute
   ParentRoute: typeof ParentRouteWithChildren
-  PatientsRoute: typeof PatientsRoute
+  PatientsRoute: typeof PatientsRouteWithChildren
   ReportsRoute: typeof ReportsRoute
   EvolutionPatientIdRoute: typeof EvolutionPatientIdRoute
   PatientPatientIdRoute: typeof PatientPatientIdRoute
@@ -306,6 +318,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PeiPatientIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/patients/new': {
+      id: '/patients/new'
+      path: '/new'
+      fullPath: '/patients/new'
+      preLoaderRoute: typeof PatientsNewRouteImport
+      parentRoute: typeof PatientsRoute
+    }
     '/patient/$patientId': {
       id: '/patient/$patientId'
       path: '/patient/$patientId'
@@ -376,6 +395,18 @@ const ParentRouteChildren: ParentRouteChildren = {
 const ParentRouteWithChildren =
   ParentRoute._addFileChildren(ParentRouteChildren)
 
+interface PatientsRouteChildren {
+  PatientsNewRoute: typeof PatientsNewRoute
+}
+
+const PatientsRouteChildren: PatientsRouteChildren = {
+  PatientsNewRoute: PatientsNewRoute,
+}
+
+const PatientsRouteWithChildren = PatientsRoute._addFileChildren(
+  PatientsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
@@ -383,7 +414,7 @@ const rootRouteChildren: RootRouteChildren = {
   ForumRoute: ForumRoute,
   NotificationsRoute: NotificationsRoute,
   ParentRoute: ParentRouteWithChildren,
-  PatientsRoute: PatientsRoute,
+  PatientsRoute: PatientsRouteWithChildren,
   ReportsRoute: ReportsRoute,
   EvolutionPatientIdRoute: EvolutionPatientIdRoute,
   PatientPatientIdRoute: PatientPatientIdRoute,
