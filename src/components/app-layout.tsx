@@ -5,9 +5,11 @@ import {
   ShieldCheck, Heart, ClipboardCheck, LogOut, Loader2, DollarSign,
 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCurrentUser } from "@/lib/auth-context";
 import { logoutUser } from "@/server/queries/auth";
+import { getUnreadNotificationCount } from "@/server/queries/notifications_audit";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import logo from "@/assets/logo-gize.png";
@@ -28,6 +30,7 @@ const navByRole: Record<string, NavItem[]> = {
   admin: [
     { to: "/admin",           label: "Dashboard",     icon: Home },
     { to: "/admin/financial", label: "Financeiro",    icon: DollarSign },
+    { to: "/admin/audit",     label: "Auditoria LGPD",icon: ShieldCheck },
     { to: "/admin/approvals", label: "Aprovações",    icon: ClipboardCheck },
     { to: "/agenda",          label: "Agenda",        icon: CalendarDays },
     { to: "/patients",        label: "Pacientes",     icon: Users },
@@ -63,6 +66,15 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const RoleIcon = roleIcon[role as keyof typeof roleIcon] ?? Stethoscope;
   const [loggingOut, setLoggingOut] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    getUnreadNotificationCount()
+      .then((res) => {
+        if (res && typeof res.count === "number") setUnreadCount(res.count);
+      })
+      .catch(() => null);
+  }, [pathname]);
 
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -115,14 +127,21 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 key={it.to}
                 to={it.to}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
+                  "flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
                   active
                     ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                     : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
                 )}
               >
-                <it.icon className="size-4" />
-                {it.label}
+                <div className="flex items-center gap-3">
+                  <it.icon className="size-4" />
+                  {it.label}
+                </div>
+                {it.to === "/notifications" && unreadCount > 0 && (
+                  <Badge className="bg-destructive text-destructive-foreground text-[10px] px-1.5 py-0.2 rounded-full h-4 min-w-4 flex items-center justify-center border-0">
+                    {unreadCount}
+                  </Badge>
+                )}
               </Link>
             );
           })}

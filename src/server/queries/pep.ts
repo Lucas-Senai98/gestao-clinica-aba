@@ -10,6 +10,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getDB, generateId } from "@/server/db";
 import { getSessionUser } from "@/server/queries/auth";
+import { logAuditEvent } from "@/server/queries/notifications_audit";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CHECKLIST CLÍNICO ABA — 8 PASSOS
@@ -30,6 +31,10 @@ const ChecklistInput = z.object({
 export const getClinicalChecklist = createServerFn({ method: "GET" })
   .validator(z.object({ patientId: z.string() }))
   .handler(async ({ data }) => {
+    const user = await getSessionUser();
+    if (user) {
+      await logAuditEvent(user.id, "VIEW_PEP", "clinical_checklists", data.patientId);
+    }
     const db = getDB();
     return db
       .prepare(
@@ -47,6 +52,8 @@ export const saveClinicalChecklist = createServerFn({ method: "POST" })
     const user = await getSessionUser();
     if (!user) throw new Error("Sessão expirada.");
     if (user.role === "parent") throw new Error("Sem permissão.");
+
+    await logAuditEvent(user.id, "EDIT_CHECKLIST", "clinical_checklists", data.patientId);
 
     const db  = getDB();
     const now = new Date().toISOString();

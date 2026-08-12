@@ -10,6 +10,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getDB, generateId } from "@/server/db";
 import { getSessionUser } from "@/server/queries/auth";
+import { sendNotificationHelper, logAuditEvent } from "@/server/queries/notifications_audit";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. PORTAL DOS PAIS: FEED DE DEVOLUTIVAS DIÁRIAS
@@ -155,6 +156,24 @@ export const createDevolutiva = createServerFn({ method: "POST" })
       )
       .run();
 
+    // Dispara Notificação para todos os responsáveis do paciente
+    const guardians = await db
+      .prepare(`SELECT guardian_id FROM patient_guardian WHERE patient_id = ?1`)
+      .bind(data.patientId)
+      .all<{ guardian_id: string }>();
+
+    for (const g of guardians.results) {
+      await sendNotificationHelper(
+        g.guardian_id,
+        "Nova Devolutiva de Sessão 💜",
+        `O terapeuta ${user.name} publicou a devolutiva da sessão. Acesse o portal para visualizar.`,
+        "devolutiva",
+      );
+    }
+
+    // Grava Log de Auditoria LGPD
+    await logAuditEvent(user.id, "CREATE_DEVOLUTIVA", "parent_feed", data.patientId);
+
     return { id };
   });
 
@@ -208,6 +227,8 @@ export const createAnnouncement = createServerFn({ method: "POST" })
       )
       .bind(id, user.id, data.title, data.body)
       .run();
+
+    await logAuditEvent(user.id, "CREATE_ANNOUNCEMENT", "announcements");
 
     return { id };
   });

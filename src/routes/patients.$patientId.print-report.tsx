@@ -6,6 +6,7 @@ import { CHECKLIST_STEPS, REPERTOIRE_TEMPLATE, SKILL_LEVELS, type SkillLevel } f
 import { getClinicalChecklist, getRepertoireRecords } from "@/server/queries/pep";
 import { getPatientAnalytics } from "@/server/queries/analytics";
 import { getParentFeed } from "@/server/queries/communication";
+import { recordAuditLog } from "@/server/queries/notifications_audit";
 import logo from "@/assets/logo-gize.png";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -95,6 +96,10 @@ function PrintReportPage() {
   useEffect(() => {
     let unmounted = false;
     setLoading(true);
+
+    recordAuditLog({
+      data: { action: "EXPORT_PDF", resource: "clinical_report", patientId },
+    }).catch(() => null);
 
     Promise.all([
       getClinicalChecklist({ data: { patientId } }).catch(() => null),
