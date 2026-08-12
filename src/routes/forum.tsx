@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireAuth, requireRole } from "@/lib/route-guard";
 import { useState } from "react";
 import { AppLayout, PageHeader } from "@/components/app-layout";
 import { forumThreads } from "@/lib/mock-data";
@@ -11,6 +12,7 @@ import { MessageSquare, Send, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/forum")({
+  beforeLoad: requireAuth(),
   head: () => ({
     meta: [
       { title: "Fórum Clínico Interno — Gestão Clínica ABA" },

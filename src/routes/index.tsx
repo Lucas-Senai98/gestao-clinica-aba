@@ -1,6 +1,7 @@
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
+import { requireAuth } from "@/lib/route-guard";
 import { AppLayout, PageHeader } from "@/components/app-layout";
-import { useRole } from "@/lib/role-context";
+import { useCurrentUser } from "@/lib/auth-context";
 import { patients } from "@/lib/mock-data";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Play, Calendar, TrendingUp, ChevronRight } from "lucide-react";
 
 export const Route = createFileRoute("/")({
+  beforeLoad: requireAuth(),
   head: () => ({
     meta: [
       { title: "Meus Pacientes — Gestão Clínica ABA" },
@@ -23,7 +25,8 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
-  const { role } = useRole();
+  const user = useCurrentUser();
+  const role = user?.role;
 
   if (role === "admin") return <Navigate to="/admin" />;
   if (role === "parent") return <Navigate to="/parent" />;

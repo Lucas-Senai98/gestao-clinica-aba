@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
+import { requireAuth, requireRole } from "@/lib/route-guard";
 import { AppLayout, PageHeader } from "@/components/app-layout";
 import { patients, peiGoals, peiHistory } from "@/lib/mock-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +10,7 @@ import { ArrowLeft, Target, History, LineChart } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/pei/$patientId")({
+  beforeLoad: requireAuth(),
   head: () => ({
     meta: [
       { title: "PEI — Plano de Ensino Individualizado | Gestão Clínica ABA" },

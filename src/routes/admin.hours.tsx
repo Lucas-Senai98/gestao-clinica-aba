@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireAuth, requireRole } from "@/lib/route-guard";
 import { AppLayout, PageHeader } from "@/components/app-layout";
 import { therapistHours } from "@/lib/mock-data";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,6 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/admin/hours")({
+  beforeLoad: requireRole("admin"),
   head: () => ({
     meta: [
       { title: "Controle de Horas — Gestão Clínica ABA" },

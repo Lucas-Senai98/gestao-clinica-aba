@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireAuth, requireRole } from "@/lib/route-guard";
 import { useState } from "react";
 import { AppLayout, PageHeader } from "@/components/app-layout";
 import { parentSchedule, parentAttendance, homePractices } from "@/lib/mock-data";
@@ -9,6 +10,7 @@ import { CalendarDays, CheckCircle2, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/parent/agenda")({
+  beforeLoad: requireRole("parent"),
   head: () => ({
     meta: [
       { title: "Agenda e atividades de casa — Portal dos Responsáveis" },

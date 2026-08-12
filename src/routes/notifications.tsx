@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireAuth, requireRole } from "@/lib/route-guard";
 import { useState } from "react";
 import { AppLayout, PageHeader } from "@/components/app-layout";
 import { notifications as seed } from "@/lib/mock-data";
@@ -9,6 +10,7 @@ import { BellRing, CheckCheck, Info, TriangleAlert, Megaphone } from "lucide-rea
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/notifications")({
+  beforeLoad: requireAuth(),
   head: () => ({
     meta: [
       { title: "Central de notificações — Gestão Clínica ABA" },

@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { requireAuth, requireRole } from "@/lib/route-guard";
 import { AppLayout, PageHeader } from "@/components/app-layout";
 import { adminStats, therapists, patients, monthlyPerformance } from "@/lib/mock-data";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,6 +17,7 @@ import {
 } from "recharts";
 
 export const Route = createFileRoute("/admin")({
+  beforeLoad: requireRole("admin"),
   head: () => ({
     meta: [
       { title: "Dashboard da Supervisão — Gestão Clínica ABA" },

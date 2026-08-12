@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireAuth, requireRole } from "@/lib/route-guard";
 import { AppLayout, PageHeader } from "@/components/app-layout";
 import { parentFeed, announcements } from "@/lib/mock-data";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Bell, Heart, Smile, ThumbsUp } from "lucide-react";
 
 export const Route = createFileRoute("/parent")({
+  beforeLoad: requireRole("parent"),
   head: () => ({
     meta: [
       { title: "Portal dos Responsáveis — Gestão Clínica ABA" },

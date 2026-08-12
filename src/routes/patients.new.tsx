@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { requireAuth, requireRole } from "@/lib/route-guard";
 import { useState } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -21,6 +22,7 @@ import {
 import { ArrowLeft, UserPlus, Save } from "lucide-react";
 
 export const Route = createFileRoute("/patients/new")({
+  beforeLoad: requireAuth(),
   head: () => ({
     meta: [
       { title: "Cadastro de paciente — Gestão Clínica ABA" },

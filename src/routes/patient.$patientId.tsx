@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
+import { requireAuth, requireRole } from "@/lib/route-guard";
 import { AppLayout, PageHeader } from "@/components/app-layout";
 import { patients, repertoire, reinforcers, stereotypies, clinicalChecklist } from "@/lib/mock-data";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -25,6 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { TrendingUp, FileText } from "lucide-react";
 
 export const Route = createFileRoute("/patient/$patientId")({
+  beforeLoad: requireAuth(),
   head: () => ({
     meta: [
       { title: "Prontuário Eletrônico ABA — Gestão Clínica ABA" },

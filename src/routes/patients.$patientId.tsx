@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-router";
+import { requireAuth, requireRole } from "@/lib/route-guard";
 import { useState } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -26,6 +27,7 @@ export const Route = createFileRoute("/patients/$patientId")({
     if (!patient) throw notFound();
     return { patient };
   },
+  beforeLoad: requireAuth(),
   head: ({ loaderData }) => {
     if (!loaderData) {
       return {

@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
+import { requireAuth, requireRole } from "@/lib/route-guard";
 import { AppLayout, PageHeader } from "@/components/app-layout";
 import { patients, monthlyPerformance, yesNoByTarget, intensityFrequency } from "@/lib/mock-data";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,6 +20,7 @@ import {
 } from "recharts";
 
 export const Route = createFileRoute("/evolution/$patientId")({
+  beforeLoad: requireAuth(),
   head: () => ({
     meta: [
       { title: "Evolução do Paciente — Gestão Clínica ABA" },

@@ -1,7 +1,21 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "tanstack-start-app",
+  "name": "gestao-clinica-gizes",
   "compatibility_date": "2025-09-24",
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/server.ts",
+
+  // ── Banco de Dados Cloudflare D1 ──────────────────────────────────────────
+  "d1_databases": [
+    {
+      // Binding name: como acessaremos no código → env.DB
+      "binding": "DB",
+      // Nome lógico do banco (para o painel da Cloudflare)
+      "database_name": "gestao-clinica-gizes",
+      // ID do banco D1 real (substitua após criar com: wrangler d1 create gestao-clinica-gizes)
+      "database_id": "SUBSTITUIR_APOS_CRIAR_O_BANCO_D1",
+      // Aponta para a pasta de migrações locais
+      "migrations_dir": "migrations"
+    }
+  ]
 }

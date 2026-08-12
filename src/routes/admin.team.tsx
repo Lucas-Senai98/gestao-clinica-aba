@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireAuth, requireRole } from "@/lib/route-guard";
 import { useState } from "react";
 import { AppLayout, PageHeader } from "@/components/app-layout";
 import { teamMembers, teamCertifications } from "@/lib/mock-data";
@@ -13,6 +14,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/team")({
+  beforeLoad: requireRole("admin"),
   head: () => ({
     meta: [
       { title: "Gestão de equipe clínica — Gestão Clínica ABA" },

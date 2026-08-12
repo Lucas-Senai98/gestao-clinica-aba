@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { requireAuth, requireRole } from "@/lib/route-guard";
 import { useState } from "react";
 import { AppLayout, PageHeader } from "@/components/app-layout";
 import { appointments, weekDays } from "@/lib/mock-data";
@@ -9,6 +10,7 @@ import { Clock, MapPin, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/agenda")({
+  beforeLoad: requireAuth(),
   head: () => ({
     meta: [
       { title: "Agenda de Sessões — Gestão Clínica ABA" },

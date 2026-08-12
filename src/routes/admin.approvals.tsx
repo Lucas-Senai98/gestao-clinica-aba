@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireAuth, requireRole } from "@/lib/route-guard";
 import { useState } from "react";
 import { AppLayout, PageHeader } from "@/components/app-layout";
 import { pendingApprovals } from "@/lib/mock-data";
@@ -10,6 +11,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/approvals")({
+  beforeLoad: requireRole("admin"),
   head: () => ({
     meta: [
       { title: "Aprovações pendentes — Supervisão | Gestão Clínica ABA" },

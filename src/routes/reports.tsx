@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { requireAuth, requireRole } from "@/lib/route-guard";
 import { useState } from "react";
 import { AppLayout, PageHeader } from "@/components/app-layout";
 import { reportTemplates, generatedReports, patients } from "@/lib/mock-data";
@@ -17,6 +18,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/reports")({
+  beforeLoad: requireAuth(),
   head: () => ({
     meta: [
       { title: "Relatórios clínicos — Gestão Clínica ABA" },
