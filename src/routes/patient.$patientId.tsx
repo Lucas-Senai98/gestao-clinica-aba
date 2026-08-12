@@ -57,6 +57,7 @@ import {
 import {
   TrendingUp,
   FileText,
+  FileDown,
   Save,
   Loader2,
   Plus,
@@ -115,6 +116,11 @@ function PatientPEP() {
               <Button asChild variant="outline" size="sm">
                 <Link to="/evolution/$patientId" params={{ patientId: p.id }}>
                   <TrendingUp className="size-4" /> Evolução
+                </Link>
+              </Button>
+              <Button asChild variant="secondary" size="sm" className="border border-primary/20 bg-primary-soft text-primary hover:bg-primary/20">
+                <Link to="/patients/$patientId/print-report" params={{ patientId: p.id }} target="_blank">
+                  <FileDown className="size-4 mr-1" /> Exportar Relatório PDF
                 </Link>
               </Button>
               <Button asChild size="sm">

@@ -33,6 +33,7 @@ import {
   XCircle,
   Clock,
   Sparkles,
+  FileDown,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -208,12 +209,20 @@ function EvolutionPage() {
 
   return (
     <AppLayout>
-      {/* Navegação de volta */}
-      <Button asChild variant="ghost" size="sm" className="mb-3 -ml-2">
-        <Link to="/patient/$patientId" params={{ patientId: patient.id }}>
-          <ArrowLeft className="size-4" /> Voltar ao Prontuário
-        </Link>
-      </Button>
+      {/* Navegação de volta e Ações */}
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <Button asChild variant="ghost" size="sm" className="-ml-2">
+          <Link to="/patient/$patientId" params={{ patientId: patient.id }}>
+            <ArrowLeft className="size-4" /> Voltar ao Prontuário
+          </Link>
+        </Button>
+
+        <Button asChild variant="secondary" size="sm" className="border border-primary/20 bg-primary-soft text-primary hover:bg-primary/20">
+          <Link to="/patients/$patientId/print-report" params={{ patientId: patient.id }} target="_blank">
+            <FileDown className="size-4 mr-1" /> Exportar Relatório PDF
+          </Link>
+        </Button>
+      </div>
 
       {/* Header do Painel */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
