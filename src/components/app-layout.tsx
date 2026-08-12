@@ -2,7 +2,7 @@ import { Link, useRouterState, useRouter } from "@tanstack/react-router";
 import {
   Home, Users, CalendarDays, MessageSquare, Clock,
   LineChart, Bell, Stethoscope, FileText, UserCog,
-  ShieldCheck, Heart, ClipboardCheck, LogOut, Loader2,
+  ShieldCheck, Heart, ClipboardCheck, LogOut, Loader2, DollarSign,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
@@ -20,12 +20,14 @@ const navByRole: Record<string, NavItem[]> = {
     { to: "/agenda",      label: "Agenda",        icon: CalendarDays },
     { to: "/patients",    label: "Pacientes",     icon: Users },
     { to: "/pei/p1",      label: "PEI",           icon: ClipboardCheck },
+    { to: "/therapist/payout", label: "Ganhos",   icon: DollarSign },
     { to: "/reports",     label: "Relatórios",    icon: FileText },
     { to: "/forum",       label: "Fórum",         icon: MessageSquare },
     { to: "/notifications",label: "Notificações", icon: Bell },
   ],
   admin: [
     { to: "/admin",           label: "Dashboard",     icon: Home },
+    { to: "/admin/financial", label: "Financeiro",    icon: DollarSign },
     { to: "/admin/approvals", label: "Aprovações",    icon: ClipboardCheck },
     { to: "/agenda",          label: "Agenda",        icon: CalendarDays },
     { to: "/patients",        label: "Pacientes",     icon: Users },
