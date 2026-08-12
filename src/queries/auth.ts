@@ -82,38 +82,42 @@ function setCookieSession(sessionId: string, expiresAt: Date) {
  */
 export const getSessionUser = createServerFn({ method: "GET" }).handler(
   async (): Promise<SessionUser | null> => {
-    const sessionId = getCookie(SESSION_COOKIE);
-    if (!sessionId) return null;
+    try {
+      const sessionId = getCookie(SESSION_COOKIE);
+      if (!sessionId) return null;
 
-    const db = getDB();
-    const row = await db
-      .prepare(
-        `SELECT s.user_id, u.email, u.name, u.role, u.avatar_initials
-         FROM auth_sessions s
-         JOIN users u ON u.id = s.user_id
-         WHERE s.id = ?1
-           AND datetime(s.expires_at) > datetime('now')
-           AND u.is_active = 1
-         LIMIT 1`,
-      )
-      .bind(sessionId)
-      .first<{
-        user_id:         string;
-        email:           string;
-        name:            string;
-        role:            string;
-        avatar_initials: string | null;
-      }>();
+      const db = getDB();
+      const row = await db
+        .prepare(
+          `SELECT s.user_id, u.email, u.name, u.role, u.avatar_initials
+           FROM auth_sessions s
+           JOIN users u ON u.id = s.user_id
+           WHERE s.id = ?1
+             AND datetime(s.expires_at) > datetime('now')
+             AND u.is_active = 1
+           LIMIT 1`,
+        )
+        .bind(sessionId)
+        .first<{
+          user_id:         string;
+          email:           string;
+          name:            string;
+          role:            string;
+          avatar_initials: string | null;
+        }>();
 
-    if (!row) return null;
+      if (!row) return null;
 
-    return {
-      id:              row.user_id,
-      email:           row.email,
-      name:            row.name,
-      role:            row.role as Role,
-      avatar_initials: row.avatar_initials,
-    };
+      return {
+        id:              row.user_id,
+        email:           row.email,
+        name:            row.name,
+        role:            row.role as Role,
+        avatar_initials: row.avatar_initials,
+      };
+    } catch {
+      return null;
+    }
   },
 );
 

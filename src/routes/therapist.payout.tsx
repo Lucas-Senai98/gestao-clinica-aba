@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { requireAuth } from "@/lib/route-guard";
 import { useCurrentUser } from "@/lib/auth-context";
 import { AppLayout, PageHeader } from "@/components/app-layout";
-import { getTherapistPayout } from "@/server/queries/financial";
+import { getTherapistPayout } from "@/queries/financial";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

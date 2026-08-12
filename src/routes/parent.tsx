@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { requireAuth, requireRole } from "@/lib/route-guard";
 import { useCurrentUser } from "@/lib/auth-context";
 import { AppLayout, PageHeader } from "@/components/app-layout";
-import { getParentFeed, getAnnouncements } from "@/server/queries/communication";
+import { getParentFeed, getAnnouncements } from "@/queries/communication";
 import { parentFeed as mockFeed, announcements as mockAnnouncements } from "@/lib/mock-data";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";

@@ -22,7 +22,7 @@ import {
   saveStereotypyRecord,
   deleteReinforcerRecord,
   deleteStereotypyRecord,
-} from "@/server/queries/pep";
+} from "@/queries/pep";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";

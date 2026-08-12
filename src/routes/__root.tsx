@@ -9,7 +9,7 @@ import {
   redirect,
 } from "@tanstack/react-router";
 import { AuthProvider } from "@/lib/auth-context";
-import { getSessionUser } from "@/server/queries/auth";
+import { getSessionUser } from "@/queries/auth";
 import { Toaster } from "@/components/ui/sonner";
 import type { RouterContext } from "@/router";
 

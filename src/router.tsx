@@ -1,7 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
-import type { SessionUser } from "@/server/queries/auth";
+import type { SessionUser } from "@/queries/auth";
 
 // Tipo do contexto global do router — disponível em todos os beforeLoad
 export interface RouterContext {

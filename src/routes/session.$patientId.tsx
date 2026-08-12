@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate, useParams } from "@tanstack/react-r
 import { useState, useCallback } from "react";
 import { requireAuth } from "@/lib/route-guard";
 import { useCurrentUser } from "@/lib/auth-context";
-import { saveDailyRecord } from "@/server/queries/sessions";
+import { saveDailyRecord } from "@/queries/sessions";
 import { patients } from "@/lib/mock-data";
 import { AppLayout, PageHeader } from "@/components/app-layout";
 import { Card, CardContent } from "@/components/ui/card";

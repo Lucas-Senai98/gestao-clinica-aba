@@ -6,4 +6,4 @@
  * Novos componentes devem importar diretamente de "@/lib/auth-context".
  */
 export { useRole, AuthProvider as RoleProvider } from "@/lib/auth-context";
-export type { SessionUser as RoleContext } from "@/server/queries/auth";
+export type { SessionUser as RoleContext } from "@/queries/auth";

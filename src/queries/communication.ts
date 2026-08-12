@@ -9,8 +9,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getDB, generateId } from "@/server/db";
-import { getSessionUser } from "@/server/queries/auth";
-import { sendNotificationHelper, logAuditEvent } from "@/server/queries/notifications_audit";
+import { getSessionUser } from "@/queries/auth";
+import { sendNotificationHelper, logAuditEvent } from "@/queries/notifications_audit";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. PORTAL DOS PAIS: FEED DE DEVOLUTIVAS DIÁRIAS

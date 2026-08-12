@@ -8,7 +8,7 @@ import {
   updateTherapistPaymentRate,
   type PatientBillingItem,
   type TherapistPayoutItem,
-} from "@/server/queries/financial";
+} from "@/queries/financial";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

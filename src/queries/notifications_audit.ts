@@ -8,7 +8,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getDB, generateId } from "@/server/db";
-import { getSessionUser } from "@/server/queries/auth";
+import { getSessionUser } from "@/queries/auth";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. CENTRAL DE NOTIFICAÇÕES IN-APP

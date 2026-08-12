@@ -9,7 +9,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getDB } from "@/server/db";
-import { getSessionUser } from "@/server/queries/auth";
+import { getSessionUser } from "@/queries/auth";
 
 const AnalyticsInput = z.object({
   patientId: z.string(),

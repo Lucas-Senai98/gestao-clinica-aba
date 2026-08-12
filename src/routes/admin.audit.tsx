@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { requireRole } from "@/lib/route-guard";
 import { AppLayout, PageHeader } from "@/components/app-layout";
-import { getAuditLogs, type AuditLogItem } from "@/server/queries/notifications_audit";
+import { getAuditLogs, type AuditLogItem } from "@/queries/notifications_audit";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

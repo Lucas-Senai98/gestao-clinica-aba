@@ -6,7 +6,7 @@
  * e acessam o banco D1 diretamente.
  *
  * Uso nas rotas:
- *   import { getPatients, getPatientById } from "@/server/queries/patients";
+ *   import { getPatients, getPatientById } from "@/queries/patients";
  *   const patients = await getPatients({ data: { role: "therapist", userId: "..." } });
  */
 import { createServerFn } from "@tanstack/react-start";

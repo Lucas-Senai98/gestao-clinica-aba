@@ -7,7 +7,7 @@ import {
   markNotificationAsRead,
   markAllNotificationsAsRead,
   type NotificationItem,
-} from "@/server/queries/notifications_audit";
+} from "@/queries/notifications_audit";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

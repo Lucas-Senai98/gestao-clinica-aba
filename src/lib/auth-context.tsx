@@ -5,7 +5,7 @@
  * (via beforeLoad na rota raiz). Substitui o RoleProvider do localStorage.
  */
 import { createContext, useContext, type ReactNode } from "react";
-import type { SessionUser } from "@/server/queries/auth";
+import type { SessionUser } from "@/queries/auth";
 
 // ── Contexto ──────────────────────────────────────────────────────────────────
 

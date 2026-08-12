@@ -7,8 +7,8 @@ import {
 import type { ReactNode } from "react";
 import { useState, useEffect } from "react";
 import { useCurrentUser } from "@/lib/auth-context";
-import { logoutUser } from "@/server/queries/auth";
-import { getUnreadNotificationCount } from "@/server/queries/notifications_audit";
+import { logoutUser } from "@/queries/auth";
+import { getUnreadNotificationCount } from "@/queries/notifications_audit";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";

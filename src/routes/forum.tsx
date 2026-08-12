@@ -8,7 +8,7 @@ import {
   createForumThread,
   getThreadReplies,
   sendThreadReply,
-} from "@/server/queries/communication";
+} from "@/queries/communication";
 import { forumThreads as mockThreads } from "@/lib/mock-data";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

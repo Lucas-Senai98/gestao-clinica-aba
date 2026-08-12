@@ -7,7 +7,7 @@ import {
   getAnnouncements,
   createAnnouncement,
   deleteAnnouncement,
-} from "@/server/queries/communication";
+} from "@/queries/communication";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
