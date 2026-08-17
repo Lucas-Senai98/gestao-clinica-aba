@@ -17,6 +17,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as ParentRouteImport } from './routes/parent'
 import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminApprovalsRouteImport } from './routes/admin.approvals'
 import { Route as AdminAuditRouteImport } from './routes/admin.audit'
 import { Route as AdminFinancialRouteImport } from './routes/admin.financial'
@@ -72,6 +73,11 @@ const ReportsRoute = ReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AdminApprovalsRoute = AdminApprovalsRouteImport.update({
   id: '/approvals',
@@ -172,12 +178,12 @@ export interface FileRoutesByFullPath {
   '/pei/$patientId': typeof PeiPatientIdRoute
   '/session/$patientId': typeof SessionPatientIdRoute
   '/therapist/payout': typeof TherapistPayoutRoute
+  '/admin/': typeof AdminIndexRoute
   '/patients/': typeof PatientsIndexRoute
   '/patients/$patientId/print-report': typeof PatientsPatientIdPrintReportRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
   '/agenda': typeof AgendaRoute
   '/forum': typeof ForumRoute
   '/login': typeof LoginRoute
@@ -197,6 +203,7 @@ export interface FileRoutesByTo {
   '/pei/$patientId': typeof PeiPatientIdRoute
   '/session/$patientId': typeof SessionPatientIdRoute
   '/therapist/payout': typeof TherapistPayoutRoute
+  '/admin': typeof AdminIndexRoute
   '/patients': typeof PatientsIndexRoute
   '/patients/$patientId/print-report': typeof PatientsPatientIdPrintReportRoute
 }
@@ -223,6 +230,7 @@ export interface FileRoutesById {
   '/pei/$patientId': typeof PeiPatientIdRoute
   '/session/$patientId': typeof SessionPatientIdRoute
   '/therapist/payout': typeof TherapistPayoutRoute
+  '/admin/': typeof AdminIndexRoute
   '/patients/': typeof PatientsIndexRoute
   '/patients/$patientId/print-report': typeof PatientsPatientIdPrintReportRoute
 }
@@ -250,12 +258,12 @@ export interface FileRouteTypes {
     | '/pei/$patientId'
     | '/session/$patientId'
     | '/therapist/payout'
+    | '/admin/'
     | '/patients/'
     | '/patients/$patientId/print-report'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/admin'
     | '/agenda'
     | '/forum'
     | '/login'
@@ -275,6 +283,7 @@ export interface FileRouteTypes {
     | '/pei/$patientId'
     | '/session/$patientId'
     | '/therapist/payout'
+    | '/admin'
     | '/patients'
     | '/patients/$patientId/print-report'
   id:
@@ -300,6 +309,7 @@ export interface FileRouteTypes {
     | '/pei/$patientId'
     | '/session/$patientId'
     | '/therapist/payout'
+    | '/admin/'
     | '/patients/'
     | '/patients/$patientId/print-report'
   fileRoutesById: FileRoutesById
@@ -380,6 +390,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/reports'
       preLoaderRoute: typeof ReportsRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/admin/approvals': {
       id: '/admin/approvals'
@@ -495,6 +512,7 @@ interface AdminRouteChildren {
   AdminFinancialRoute: typeof AdminFinancialRoute
   AdminHoursRoute: typeof AdminHoursRoute
   AdminTeamRoute: typeof AdminTeamRoute
+  AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
@@ -503,6 +521,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminFinancialRoute: AdminFinancialRoute,
   AdminHoursRoute: AdminHoursRoute,
   AdminTeamRoute: AdminTeamRoute,
+  AdminIndexRoute: AdminIndexRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
