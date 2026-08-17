@@ -1,6 +1,6 @@
 /**
  * src/server/queries/auth.ts
- * Server Functions de autenticação — PBKDF2 + Cookie HttpOnly + D1
+ * Server Functions de autenticação — PBKDF2 + Cookie HttpOnly + D1 + Fallback Dev
  */
 import { createServerFn } from "@tanstack/react-start";
 import { getCookie, setCookie, deleteCookie } from "@tanstack/react-start/server";
@@ -22,6 +22,13 @@ export interface SessionUser {
   avatar_initials: string | null;
 }
 
+export interface DevUserCredential {
+  user: SessionUser;
+  password?: string;
+  passwordHash?: string;
+  passwordSalt?: string;
+}
+
 // ── Utilitários de cripto (WebCrypto — compatível com Cloudflare Workers) ─────
 
 function hexToBytes(hex: string): Uint8Array {
@@ -32,14 +39,15 @@ function hexToBytes(hex: string): Uint8Array {
   return bytes;
 }
 
-function bytesToHex(buf: ArrayBuffer): string {
-  return Array.from(new Uint8Array(buf))
+function bytesToHex(buf: ArrayBuffer | Uint8Array): string {
+  const u8 = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  return Array.from(u8)
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 }
 
 /** Gera hash PBKDF2-SHA256 da senha com o salt fornecido. */
-async function pbkdf2Hash(password: string, saltHex: string): Promise<string> {
+export async function pbkdf2Hash(password: string, saltHex: string): Promise<string> {
   const keyMaterial = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(password),
@@ -74,63 +82,99 @@ function setCookieSession(sessionId: string, expiresAt: Date) {
   });
 }
 
-// ── Server Function: getSessionUser ───────────────────────────────────────────
+// ── Store de Usuários e Sessões de Desenvolvimento em Memória ─────────
 
-/**
- * Lê o cookie de sessão e retorna o usuário autenticado (ou null).
- * Chamado no beforeLoad da rota raiz para injetar o usuário no contexto.
- */
-const DEV_USERS: Record<string, SessionUser> = {
+const DEV_CREDENTIALS: Record<string, DevUserCredential> = {
   "supervisora@gizeclinica.com.br": {
-    id: "u-admin-01",
-    email: "supervisora@gizeclinica.com.br",
-    name: "Marina Duarte",
-    role: "admin",
-    avatar_initials: "MD",
+    user: {
+      id: "u-admin-01",
+      email: "supervisora@gizeclinica.com.br",
+      name: "Marina Duarte",
+      role: "admin",
+      avatar_initials: "MD",
+    },
+    password: "Gizes@2025",
   },
   "ana.lopes@gizeclinica.com.br": {
-    id: "u-therapist-01",
-    email: "ana.lopes@gizeclinica.com.br",
-    name: "Ana Beatriz Lopes",
-    role: "therapist",
-    avatar_initials: "AB",
+    user: {
+      id: "u-therapist-01",
+      email: "ana.lopes@gizeclinica.com.br",
+      name: "Ana Beatriz Lopes",
+      role: "therapist",
+      avatar_initials: "AB",
+    },
+    password: "Gizes@2025",
   },
   "carla.mendes@gizeclinica.com.br": {
-    id: "u-therapist-02",
-    email: "carla.mendes@gizeclinica.com.br",
-    name: "Carla Mendes",
-    role: "therapist",
-    avatar_initials: "CM",
+    user: {
+      id: "u-therapist-02",
+      email: "carla.mendes@gizeclinica.com.br",
+      name: "Carla Mendes",
+      role: "therapist",
+      avatar_initials: "CM",
+    },
+    password: "Gizes@2025",
   },
   "diego.ramos@gizeclinica.com.br": {
-    id: "u-therapist-03",
-    email: "diego.ramos@gizeclinica.com.br",
-    name: "Diego Ramos",
-    role: "therapist",
-    avatar_initials: "DR",
+    user: {
+      id: "u-therapist-03",
+      email: "diego.ramos@gizeclinica.com.br",
+      name: "Diego Ramos",
+      role: "therapist",
+      avatar_initials: "DR",
+    },
+    password: "Gizes@2025",
   },
   "fernanda.souza@gizeclinica.com.br": {
-    id: "u-therapist-04",
-    email: "fernanda.souza@gizeclinica.com.br",
-    name: "Fernanda Souza",
-    role: "therapist",
-    avatar_initials: "FS",
+    user: {
+      id: "u-therapist-04",
+      email: "fernanda.souza@gizeclinica.com.br",
+      name: "Fernanda Souza",
+      role: "therapist",
+      avatar_initials: "FS",
+    },
+    password: "Gizes@2025",
   },
   "mariana.almeida@email.com": {
-    id: "u-parent-01",
-    email: "mariana.almeida@email.com",
-    name: "Mariana Almeida",
-    role: "parent",
-    avatar_initials: "MA",
+    user: {
+      id: "u-parent-01",
+      email: "mariana.almeida@email.com",
+      name: "Mariana Almeida",
+      role: "parent",
+      avatar_initials: "MA",
+    },
+    password: "Gizes@2025",
   },
   "rafael.pereira@email.com": {
-    id: "u-parent-02",
-    email: "rafael.pereira@email.com",
-    name: "Rafael Pereira",
-    role: "parent",
-    avatar_initials: "RP",
+    user: {
+      id: "u-parent-02",
+      email: "rafael.pereira@email.com",
+      name: "Rafael Pereira",
+      role: "parent",
+      avatar_initials: "RP",
+    },
+    password: "Gizes@2025",
   },
 };
+
+const DEV_SESSIONS: Record<string, SessionUser> = {};
+
+export function registerDevUser(
+  user: SessionUser,
+  password?: string,
+  passwordHash?: string,
+  passwordSalt?: string,
+) {
+  const emailKey = user.email.trim().toLowerCase();
+  DEV_CREDENTIALS[emailKey] = {
+    user,
+    password,
+    passwordHash,
+    passwordSalt,
+  };
+}
+
+// ── Server Function: getSessionUser ───────────────────────────────────────────
 
 export const getSessionUser = createServerFn({ method: "GET" }).handler(
   async (): Promise<SessionUser | null> => {
@@ -138,11 +182,17 @@ export const getSessionUser = createServerFn({ method: "GET" }).handler(
       const sessionId = getCookie(SESSION_COOKIE);
       if (!sessionId) return null;
 
-      if (sessionId.startsWith("dev-sess-")) {
-        const email = sessionId.replace("dev-sess-", "");
-        if (DEV_USERS[email]) return DEV_USERS[email];
+      // 1. Verifica no mapa de sessões em memória
+      if (DEV_SESSIONS[sessionId]) {
+        return DEV_SESSIONS[sessionId];
       }
 
+      if (sessionId.startsWith("dev-sess-")) {
+        const email = sessionId.replace("dev-sess-", "");
+        if (DEV_CREDENTIALS[email]) return DEV_CREDENTIALS[email].user;
+      }
+
+      // 2. Consulta no D1
       const db = getDB();
       const row = await db
         .prepare(
@@ -193,9 +243,9 @@ export const loginUser = createServerFn({ method: "POST" })
     const cleanEmail = data.email.trim().toLowerCase();
     const db = getDB();
 
-    let user = null;
+    let user: (SessionUser & { password_hash?: string; password_salt?: string }) | null = null;
     try {
-      user = await db
+      const row = await db
         .prepare(
           `SELECT id, email, name, role, avatar_initials, password_hash, password_salt
            FROM users
@@ -208,43 +258,70 @@ export const loginUser = createServerFn({ method: "POST" })
           avatar_initials: string | null;
           password_hash: string; password_salt: string;
         }>();
+
+      if (row) {
+        user = {
+          id:              row.id,
+          email:           row.email,
+          name:            row.name,
+          role:            row.role as Role,
+          avatar_initials: row.avatar_initials,
+          password_hash:   row.password_hash,
+          password_salt:   row.password_salt,
+        };
+      }
     } catch {
-      // Falha no D1 local, usa fallback dev
+      // Ignora se D1 for mock
     }
 
     const invalidMsg = "E-mail ou senha inválidos.";
-
-    if (!user) {
-      // Fallback dev de conveniência se o D1 local não estiver populado
-      const devMatch = DEV_USERS[cleanEmail];
-      if (devMatch) {
-        const expiresAt = new Date(Date.now() + SESSION_DAYS * 86_400_000);
-        setCookieSession(`dev-sess-${cleanEmail}`, expiresAt);
-        return devMatch;
-      }
-      throw new Error(invalidMsg);
-    }
-
     let valid = false;
-    if (user.password_salt === "PLACEHOLDER_SALT" || user.password_salt?.startsWith("dev_")) {
-      valid = true;
-    } else {
-      const hash = await pbkdf2Hash(data.password, user.password_salt);
-      valid = hash === user.password_hash;
+
+    if (user && user.password_salt && user.password_hash) {
+      if (user.password_salt === "PLACEHOLDER_SALT" || user.password_salt.startsWith("dev_")) {
+        valid = true;
+      } else {
+        const hash = await pbkdf2Hash(data.password, user.password_salt);
+        valid = hash === user.password_hash;
+      }
     }
 
     if (!valid) {
-      const devMatch = DEV_USERS[cleanEmail];
-      if (devMatch) {
-        const expiresAt = new Date(Date.now() + SESSION_DAYS * 86_400_000);
-        setCookieSession(`dev-sess-${cleanEmail}`, expiresAt);
-        return devMatch;
+      const devCred = DEV_CREDENTIALS[cleanEmail];
+      if (devCred) {
+        if (devCred.password && devCred.password === data.password) {
+          valid = true;
+        } else if (devCred.passwordHash && devCred.passwordSalt) {
+          const hash = await pbkdf2Hash(data.password, devCred.passwordSalt);
+          valid = hash === devCred.passwordHash;
+        } else if (!devCred.password && !devCred.passwordHash) {
+          valid = true;
+        }
+
+        if (valid) {
+          user = devCred.user;
+        }
       }
+    }
+
+    if (!user || !valid) {
       throw new Error(invalidMsg);
     }
 
-    const sessionId  = generateId();
-    const expiresAt  = new Date(Date.now() + SESSION_DAYS * 86_400_000);
+    // Cria a sessão e salva no D1 e no DEV_SESSIONS
+    const sessionId = `sess-${generateId()}`;
+    const expiresAt = new Date(Date.now() + SESSION_DAYS * 86_400_000);
+
+    const sessionUser: SessionUser = {
+      id:              user.id,
+      email:           user.email,
+      name:            user.name,
+      role:            user.role as Role,
+      avatar_initials: user.avatar_initials,
+    };
+
+    DEV_SESSIONS[sessionId] = sessionUser;
+    DEV_SESSIONS[`dev-sess-${cleanEmail}`] = sessionUser;
 
     try {
       await db
@@ -254,18 +331,12 @@ export const loginUser = createServerFn({ method: "POST" })
         .bind(sessionId, user.id, expiresAt.toISOString())
         .run();
     } catch {
-      // Se a tabela auth_sessions não estiver criada ainda no D1 local
+      // Ignora erro de inserção de sessão se a tabela D1 não estiver pronta
     }
 
     setCookieSession(sessionId, expiresAt);
 
-    return {
-      id:              user.id,
-      email:           user.email,
-      name:            user.name,
-      role:            user.role as Role,
-      avatar_initials: user.avatar_initials,
-    } satisfies SessionUser;
+    return sessionUser;
   });
 
 // ── Server Function: logoutUser ───────────────────────────────────────────────
@@ -273,16 +344,17 @@ export const loginUser = createServerFn({ method: "POST" })
 export const logoutUser = createServerFn({ method: "POST" }).handler(async () => {
   const sessionId = getCookie(SESSION_COOKIE);
   if (sessionId) {
-    const db = getDB();
-    await db
-      .prepare(`DELETE FROM auth_sessions WHERE id = ?1`)
-      .bind(sessionId)
-      .run();
+    if (DEV_SESSIONS[sessionId]) {
+      delete DEV_SESSIONS[sessionId];
+    }
+    try {
+      const db = getDB();
+      await db.prepare(`DELETE FROM auth_sessions WHERE id = ?1`).bind(sessionId).run();
+    } catch {
+      // Ignora se D1 não acessível
+    }
   }
-  deleteCookie(SESSION_COOKIE, { path: "/" });
-  return { ok: true };
-});
 
-// ── Utilitário exportado para scripts Node.js ─────────────────────────────────
-// Usado pelo scripts/setup-db.mjs para gerar hashes no momento do seed.
-export { pbkdf2Hash };
+  deleteCookie(SESSION_COOKIE, { path: "/" });
+  return { success: true };
+});
