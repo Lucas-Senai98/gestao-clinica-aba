@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { requireRole } from "@/lib/route-guard";
 import { AppLayout, PageHeader } from "@/components/app-layout";
-import { adminStats, patients, monthlyPerformance } from "@/lib/mock-data";
+import { getAdminDashboardStats } from "@/queries/analytics";
 import {
   getAnnouncements,
   createAnnouncement,
@@ -52,6 +52,23 @@ export const Route = createFileRoute("/admin/")({
 });
 
 function AdminDashboardPage() {
+  const [stats, setStats] = useState<{
+    patientsCount: number;
+    therapistsCount: number;
+    weeklySessionsCount: number;
+    pendingApprovalsCount: number;
+    recentPatients: Array<{ id: string; name: string; diagnosis: string; progress: number }>;
+    monthlyPerformance: Array<{ day: string; desempenho: number }>;
+  }>({
+    patientsCount: 0,
+    therapistsCount: 0,
+    weeklySessionsCount: 0,
+    pendingApprovalsCount: 0,
+    recentPatients: [],
+    monthlyPerformance: [],
+  });
+  const [loadingStats, setLoadingStats] = useState(true);
+
   const [announcements, setAnnouncements] = useState<
     Array<{ id: string; title: string; body: string; published_at: string; author_name: string }>
   >([]);
@@ -63,7 +80,12 @@ function AdminDashboardPage() {
   const [body, setBody]               = useState("");
   const [publishing, setPublishing]   = useState(false);
 
-  const loadAnnouncementsData = () => {
+  const loadDashboardData = () => {
+    getAdminDashboardStats()
+      .then((res) => setStats(res))
+      .catch(() => null)
+      .finally(() => setLoadingStats(false));
+
     getAnnouncements()
       .then((res) => setAnnouncements(res))
       .catch(() => setAnnouncements([]))
@@ -71,7 +93,7 @@ function AdminDashboardPage() {
   };
 
   useEffect(() => {
-    loadAnnouncementsData();
+    loadDashboardData();
   }, []);
 
   const handleCreateAnnouncement = async () => {
@@ -89,7 +111,7 @@ function AdminDashboardPage() {
       setTitle("");
       setBody("");
       setShowAnnForm(false);
-      loadAnnouncementsData();
+      loadDashboardData();
     } catch (err) {
       toast.error("Erro ao publicar aviso", {
         description: err instanceof Error ? err.message : "Erro",
@@ -103,7 +125,7 @@ function AdminDashboardPage() {
     try {
       await deleteAnnouncement({ data: { announcementId: id } });
       toast.success("Comunicado removido.");
-      loadAnnouncementsData();
+      loadDashboardData();
     } catch {
       toast.error("Erro ao remover aviso.");
     }
@@ -124,10 +146,10 @@ function AdminDashboardPage() {
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        <Stat icon={Users} label="Pacientes ativos" value={adminStats.patients} />
-        <Stat icon={Stethoscope} label="Terapeutas" value={adminStats.therapists} />
-        <Stat icon={Activity} label="Sessões/semana" value={adminStats.sessionsThisWeek} />
-        <Stat icon={Clock4} label="Aprovações pendentes" value={adminStats.pendingApprovals} accent />
+        <Stat icon={Users} label="Pacientes ativos" value={stats.patientsCount} loading={loadingStats} />
+        <Stat icon={Stethoscope} label="Terapeutas" value={stats.therapistsCount} loading={loadingStats} />
+        <Stat icon={Activity} label="Sessões/semana" value={stats.weeklySessionsCount} loading={loadingStats} />
+        <Stat icon={Clock4} label="Aprovações pendentes" value={stats.pendingApprovalsCount} accent loading={loadingStats} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
@@ -138,15 +160,21 @@ function AdminDashboardPage() {
               <Badge variant="secondary">Mês atual</Badge>
             </div>
             <div className="h-48 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={monthlyPerformance}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                  <XAxis dataKey="day" tick={{ fontSize: 11 }} />
-                  <YAxis domain={[0, 100]} unit="%" tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v: number) => [`${v}%`, "Desempenho"]} />
-                  <Area type="monotone" dataKey="desempenho" stroke="oklch(0.5 0.22 285)" fill="oklch(0.5 0.22 285 / 0.15)" strokeWidth={2} />
-                </AreaChart>
-              </ResponsiveContainer>
+              {loadingStats ? (
+                <div className="h-full grid place-items-center text-xs text-muted-foreground">
+                  <Loader2 className="size-5 animate-spin text-primary" />
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={stats.monthlyPerformance}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                    <XAxis dataKey="day" tick={{ fontSize: 11 }} />
+                    <YAxis domain={[0, 100]} unit="%" tick={{ fontSize: 11 }} />
+                    <Tooltip formatter={(v: number) => [`${v}%`, "Desempenho"]} />
+                    <Area type="monotone" dataKey="desempenho" stroke="oklch(0.5 0.22 285)" fill="oklch(0.5 0.22 285 / 0.15)" strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -225,27 +253,35 @@ function AdminDashboardPage() {
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold">Pacientes recentes</h3>
               <Button asChild variant="ghost" size="sm">
-                <Link to="/patient/$patientId" params={{ patientId: "p1" }}>
+                <Link to="/patients">
                   Ver todos <ArrowRight className="size-3.5" />
                 </Link>
               </Button>
             </div>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {patients.map((p) => (
-                <Link
-                  key={p.id}
-                  to="/patient/$patientId"
-                  params={{ patientId: p.id }}
-                  className="rounded-xl border border-border p-3 hover:border-primary/40 hover:bg-primary-soft/40 transition-colors"
-                >
-                  <p className="font-medium text-sm">{p.name}</p>
-                  <p className="text-xs text-muted-foreground">{p.diagnosis}</p>
-                  <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
-                    <div className="h-full bg-primary" style={{ width: `${p.progress}%` }} />
-                  </div>
-                </Link>
-              ))}
-            </div>
+            {loadingStats ? (
+              <div className="py-6 text-center text-xs text-muted-foreground">
+                <Loader2 className="size-4 animate-spin inline mr-2" /> Carregando pacientes...
+              </div>
+            ) : stats.recentPatients.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-4 text-center">Nenhum paciente cadastrado no D1.</p>
+            ) : (
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {stats.recentPatients.map((p) => (
+                  <Link
+                    key={p.id}
+                    to="/patient/$patientId"
+                    params={{ patientId: p.id }}
+                    className="rounded-xl border border-border p-3 hover:border-primary/40 hover:bg-primary-soft/40 transition-colors"
+                  >
+                    <p className="font-medium text-sm">{p.name}</p>
+                    <p className="text-xs text-muted-foreground">{p.diagnosis}</p>
+                    <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full bg-primary" style={{ width: `${p.progress}%` }} />
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -258,11 +294,13 @@ function Stat({
   label,
   value,
   accent,
+  loading,
 }: {
   icon: typeof Users;
   label: string;
   value: number;
   accent?: boolean;
+  loading?: boolean;
 }) {
   return (
     <Card className={accent ? "border-primary/40 bg-primary-soft/40" : ""}>
@@ -276,7 +314,11 @@ function Stat({
             <Icon className="size-5" />
           </div>
           <div>
-            <p className="text-2xl font-semibold leading-none">{value}</p>
+            {loading ? (
+              <Loader2 className="size-4 animate-spin text-muted-foreground" />
+            ) : (
+              <p className="text-2xl font-semibold leading-none">{value}</p>
+            )}
             <p className="text-xs text-muted-foreground mt-1">{label}</p>
           </div>
         </div>
