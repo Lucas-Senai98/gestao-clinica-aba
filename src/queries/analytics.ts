@@ -8,7 +8,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { getDB } from "@/server/db";
+import { getDB } from "@/db/db";
 import { getSessionUser } from "@/queries/auth";
 
 const AnalyticsInput = z.object({

@@ -6,7 +6,7 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { getDB, generateId } from "@/server/db";
+import { getDB, generateId } from "@/db/db";
 import { getSessionUser } from "@/queries/auth";
 
 // ── Schema de validação ───────────────────────────────────────────────────────

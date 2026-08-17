@@ -11,8 +11,8 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { getDB, generateId, now } from "@/server/db";
-import type { DbPatient, PatientSummary } from "@/server/types";
+import { getDB, generateId, now } from "@/db/db";
+import type { DbPatient, PatientSummary } from "@/db/types";
 
 // ── Schemas de validação ──────────────────────────────────────────────────────
 
