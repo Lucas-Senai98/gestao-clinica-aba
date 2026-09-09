@@ -193,11 +193,11 @@ function NewPatient() {
 
       setErrors({});
       toast.success(`Paciente ${result.data.name} cadastrado com sucesso!`, {
-        description: "O paciente foi registrado no banco D1 com sucesso.",
+        description: "O paciente foi registrado com sucesso.",
       });
       setForm(emptyForm);
       setSelectedTherapies([]);
-      navigate({ to: "/patients" });
+      await navigate({ to: "/patients" });
     } catch (err) {
       toast.error("Erro ao cadastrar paciente", {
         description: err instanceof Error ? err.message : "Erro no banco D1",
