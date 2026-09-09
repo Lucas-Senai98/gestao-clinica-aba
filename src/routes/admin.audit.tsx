@@ -51,51 +51,10 @@ function AdminAuditPage() {
     setLoading(true);
     getAuditLogs()
       .then((res) => {
-        if (res && res.length > 0) {
-          setLogs(res);
-        } else {
-          // Fallback demonstrativo se não houver registros gravados
-          setLogs([
-            {
-              id: "aud-1",
-              user_id: "u1",
-              user_name: "Gisele Supervisora",
-              user_role: "admin",
-              patient_id: "p1",
-              patient_name: "Lucas Almeida",
-              action: "EXPORT_PDF",
-              resource: "clinical_report",
-              ip_address: "189.120.45.12",
-              timestamp: new Date().toISOString(),
-            },
-            {
-              id: "aud-2",
-              user_id: "u2",
-              user_name: "Carla Mendes",
-              user_role: "therapist",
-              patient_id: "p1",
-              patient_name: "Lucas Almeida",
-              action: "EDIT_CHECKLIST",
-              resource: "clinical_checklists",
-              ip_address: "177.89.20.101",
-              timestamp: new Date(Date.now() - 3600000).toISOString(),
-            },
-            {
-              id: "aud-3",
-              user_id: "u2",
-              user_name: "Carla Mendes",
-              user_role: "therapist",
-              patient_id: "p1",
-              patient_name: "Lucas Almeida",
-              action: "VIEW_PEP",
-              resource: "patients",
-              ip_address: "177.89.20.101",
-              timestamp: new Date(Date.now() - 7200000).toISOString(),
-            },
-          ]);
-        }
+        setLogs(res || []);
       })
       .catch((err) => {
+        setLogs([]);
         toast.error("Erro ao buscar logs de auditoria", {
           description: err instanceof Error ? err.message : "Erro",
         });

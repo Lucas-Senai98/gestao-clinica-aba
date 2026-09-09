@@ -56,7 +56,7 @@ export async function pbkdf2Hash(password: string, saltHex: string): Promise<str
     ["deriveBits"],
   );
   const hashBuf = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", salt: hexToBytes(saltHex), iterations: PBKDF2_ITER, hash: "SHA-256" },
+    { name: "PBKDF2", salt: hexToBytes(saltHex) as unknown as BufferSource, iterations: PBKDF2_ITER, hash: "SHA-256" },
     keyMaterial,
     256,
   );

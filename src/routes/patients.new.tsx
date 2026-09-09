@@ -1,10 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { requireAuth, requireRole } from "@/lib/route-guard";
-import { useState } from "react";
+import { requireAuth } from "@/lib/route-guard";
+import { useState, useEffect } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
 import { AppLayout, PageHeader } from "@/components/app-layout";
-import { therapists } from "@/lib/mock-data";
+import { createPatient } from "@/queries/patients";
+import { getClinicTeam } from "@/queries/team";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, UserPlus, Save } from "lucide-react";
+import { ArrowLeft, UserPlus, Save, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/patients/new")({
   beforeLoad: requireAuth(),
@@ -33,7 +34,7 @@ export const Route = createFileRoute("/patients/new")({
       },
       { property: "og:title", content: "Cadastro de paciente — Gestão Clínica ABA" },
       {
-        property: "og:description",
+        name: "description",
         content: "Cadastre um novo paciente com dados clínicos, responsáveis e terapias indicadas.",
       },
       { property: "og:type", content: "website" },
@@ -122,6 +123,24 @@ function NewPatient() {
   const [form, setForm] = useState(emptyForm);
   const [selectedTherapies, setSelectedTherapies] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [therapistsList, setTherapistsList] = useState<Array<{ id: string; name: string; specialty: string }>>([]);
+
+  useEffect(() => {
+    getClinicTeam()
+      .then((team) => {
+        if (team && team.length > 0) {
+          setTherapistsList(
+            team.map((t: any) => ({
+              id: t.id,
+              name: t.name,
+              specialty: t.specialty,
+            })),
+          );
+        }
+      })
+      .catch(() => setTherapistsList([]));
+  }, []);
 
   const set = (key: keyof typeof emptyForm, value: string | boolean) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -129,7 +148,7 @@ function NewPatient() {
   const toggleTherapy = (t: string) =>
     setSelectedTherapies((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const result = schema.safeParse(form);
     if (!result.success) {
@@ -147,13 +166,45 @@ function NewPatient() {
       toast.error("Selecione ao menos uma terapia indicada.");
       return;
     }
-    setErrors({});
-    toast.success(`Paciente ${result.data.name} cadastrado com sucesso!`, {
-      description: "O cadastro segue para aprovação da supervisão.",
-    });
-    setForm(emptyForm);
-    setSelectedTherapies([]);
-    navigate({ to: "/patients" });
+
+    setSaving(true);
+    try {
+      await createPatient({
+        data: {
+          name: form.name,
+          birthDate: form.birthDate,
+          gender: form.gender,
+          cpf: form.cpf || undefined,
+          diagnosis: form.diagnosis,
+          therapistId: form.therapistId,
+          guardianName: form.guardianName,
+          guardianRelation: form.guardianRelation || undefined,
+          guardianPhone: form.guardianPhone,
+          guardianEmail: form.guardianEmail,
+          address: form.address || undefined,
+          school: form.school || undefined,
+          insurance: form.insurance || undefined,
+          insuranceNumber: form.insuranceNumber || undefined,
+          weeklyHours: form.weeklyHours.replace("h", ""),
+          notes: form.notes || undefined,
+          therapies: selectedTherapies,
+        },
+      });
+
+      setErrors({});
+      toast.success(`Paciente ${result.data.name} cadastrado com sucesso!`, {
+        description: "O paciente foi registrado no banco D1 com sucesso.",
+      });
+      setForm(emptyForm);
+      setSelectedTherapies([]);
+      navigate({ to: "/patients" });
+    } catch (err) {
+      toast.error("Erro ao cadastrar paciente", {
+        description: err instanceof Error ? err.message : "Erro no banco D1",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -256,9 +307,9 @@ function NewPatient() {
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
                 <SelectContent>
-                  {therapists.map((t) => (
+                  {therapistsList.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
-                      {t.name} · {t.role}
+                      {t.name} · {t.specialty}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -32,7 +32,7 @@ export const getParentFeed = createServerFn({ method: "GET" })
         .bind(user.id)
         .all<{ patient_id: string }>();
 
-      const linkedPatientIds = guardianLinks.results.map((r) => r.patient_id);
+      const linkedPatientIds = guardianLinks.results.map((r: { patient_id: string }) => r.patient_id);
       if (linkedPatientIds.length === 0) {
         return [];
       }
@@ -45,7 +45,7 @@ export const getParentFeed = createServerFn({ method: "GET" })
 
       const queryFilter = targetPatientId
         ? `WHERE pf.patient_id = ?1`
-        : `WHERE pf.patient_id IN (${linkedPatientIds.map((_, i) => `?${i + 1}`).join(",")})`;
+        : `WHERE pf.patient_id IN (${linkedPatientIds.map((_: string, i: number) => `?${i + 1}`).join(",")})`;
 
       const bindArgs = targetPatientId ? [targetPatientId] : linkedPatientIds;
 
@@ -268,14 +268,14 @@ export const getForumThreads = createServerFn({ method: "GET" })
         .bind(user.id)
         .all<{ patient_id: string }>();
 
-      const linkedIds = linked.results.map((r) => r.patient_id);
+      const linkedIds = linked.results.map((r: { patient_id: string }) => r.patient_id);
 
       // Busca tópicos vinculados aos seus pacientes ou gerais (patient_id IS NULL)
       let queryFilter = `WHERE ft.patient_id IS NULL`;
       let bindArgs: string[] = [];
 
       if (linkedIds.length > 0) {
-        queryFilter = `WHERE (ft.patient_id IS NULL OR ft.patient_id IN (${linkedIds.map((_, i) => `?${i + 1}`).join(",")}))`;
+        queryFilter = `WHERE (ft.patient_id IS NULL OR ft.patient_id IN (${linkedIds.map((_: string, i: number) => `?${i + 1}`).join(",")}))`;
         bindArgs = linkedIds;
       }
 

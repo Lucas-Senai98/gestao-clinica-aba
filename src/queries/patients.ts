@@ -169,8 +169,121 @@ export const getPatientById = createServerFn({ method: "GET" })
 
     return {
       ...patient,
-      therapies: therapiesResult.results.map((r) => r.therapy),
+      therapies: therapiesResult.results.map((r: { therapy: string }) => r.therapy),
     };
+  });
+
+const CreatePatientInput = z.object({
+  name: z.string().min(2),
+  birthDate: z.string(),
+  gender: z.string(),
+  cpf: z.string().optional(),
+  diagnosis: z.string(),
+  therapistId: z.string(),
+  guardianName: z.string(),
+  guardianRelation: z.string().optional(),
+  guardianPhone: z.string(),
+  guardianEmail: z.string(),
+  address: z.string().optional(),
+  school: z.string().optional(),
+  insurance: z.string().optional(),
+  insuranceNumber: z.string().optional(),
+  weeklyHours: z.string(),
+  status: z.string().optional(),
+  notes: z.string().optional(),
+  therapies: z.array(z.string()).default([]),
+});
+
+export const createPatient = createServerFn({ method: "POST" })
+  .validator((d: unknown) => CreatePatientInput.parse(d))
+  .handler(async ({ data }) => {
+    const db = getDB();
+    const patientId = `p-${generateId().slice(0, 8)}`;
+    const names = data.name.trim().split(/\s+/);
+    const avatar = names.length > 1
+      ? `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase()
+      : names[0].slice(0, 2).toUpperCase();
+
+    const stmts: D1PreparedStatement[] = [
+      db
+        .prepare(
+          `INSERT INTO patients (
+             id, name, birth_date, diagnosis, avatar_initials, gender, cpf,
+             guardian_name, guardian_phone, guardian_email, guardian_relation,
+             school, insurance_plan, insurance_number, weekly_hours, status, progress, notes
+           ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, 0, ?17)`,
+        )
+        .bind(
+          patientId,
+          data.name.trim(),
+          data.birthDate,
+          data.diagnosis.trim(),
+          avatar,
+          data.gender,
+          data.cpf ?? null,
+          data.guardianName.trim(),
+          data.guardianPhone.trim(),
+          data.guardianEmail.trim(),
+          data.guardianRelation ?? null,
+          data.school ?? null,
+          data.insurance ?? null,
+          data.insuranceNumber ?? null,
+          Number(data.weeklyHours) || 10,
+          data.status || "Avaliação",
+          data.notes ?? null,
+        ),
+      db
+        .prepare(
+          `INSERT INTO patient_therapist (patient_id, therapist_id, role_in_case)
+           VALUES (?1, ?2, 'principal')`,
+        )
+        .bind(patientId, data.therapistId),
+    ];
+
+    for (const th of data.therapies) {
+      stmts.push(
+        db
+          .prepare(`INSERT INTO patient_therapies (patient_id, therapy) VALUES (?1, ?2)`)
+          .bind(patientId, th),
+      );
+    }
+
+    await db.batch(stmts);
+    return { id: patientId, name: data.name };
+  });
+
+export const updatePatient = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      id: z.string(),
+      data: CreatePatientInput.partial(),
+    }),
+  )
+  .handler(async ({ data: { id, data } }) => {
+    const db = getDB();
+    await db
+      .prepare(
+        `UPDATE patients SET
+           name = COALESCE(?1, name),
+           diagnosis = COALESCE(?2, diagnosis),
+           guardian_name = COALESCE(?3, guardian_name),
+           guardian_phone = COALESCE(?4, guardian_phone),
+           guardian_email = COALESCE(?5, guardian_email),
+           status = COALESCE(?6, status),
+           updated_at = datetime('now')
+         WHERE id = ?7`,
+      )
+      .bind(
+        data.name ?? null,
+        data.diagnosis ?? null,
+        data.guardianName ?? null,
+        data.guardianPhone ?? null,
+        data.guardianEmail ?? null,
+        data.status ?? null,
+        id,
+      )
+      .run();
+    return { success: true };
   });
 
 /**

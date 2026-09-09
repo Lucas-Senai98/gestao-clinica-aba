@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { requireAuth, requireRole } from "@/lib/route-guard";
-import { useState } from "react";
+import { requireRole } from "@/lib/route-guard";
+import { useState, useEffect } from "react";
 import { AppLayout, PageHeader } from "@/components/app-layout";
-import { pendingApprovals } from "@/lib/mock-data";
+import { getPendingApprovals, updateApprovalStatus, type ApprovalItem } from "@/queries/approvals";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Check, X, Inbox } from "lucide-react";
+import { Check, X, Inbox, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -36,15 +36,36 @@ const prioTone: Record<string, string> = {
 };
 
 function ApprovalsPage() {
-  const [items, setItems] = useState(pendingApprovals);
+  const [items, setItems] = useState<ApprovalItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const resolve = (id: string, approved: boolean) => {
+  const loadApprovals = () => {
+    setLoading(true);
+    getPendingApprovals()
+      .then((data) => setItems(data || []))
+      .catch(() => setItems([]))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadApprovals();
+  }, []);
+
+  const resolve = async (id: string, approved: boolean) => {
     const item = items.find((i) => i.id === id);
     setItems((list) => list.filter((i) => i.id !== id));
-    if (!item) return;
-    approved
-      ? toast.success("Solicitação aprovada", { description: `${item.type} — ${item.detail}` })
-      : toast("Solicitação devolvida", { description: `${item.type} — ${item.detail}` });
+    try {
+      await updateApprovalStatus({ data: { id, approved } });
+      if (!item) return;
+      approved
+        ? toast.success("Solicitação aprovada", { description: `${item.type} — ${item.detail}` })
+        : toast("Solicitação devolvida", { description: `${item.type} — ${item.detail}` });
+    } catch (err) {
+      toast.error("Erro ao atualizar solicitação", {
+        description: err instanceof Error ? err.message : "Erro",
+      });
+      loadApprovals();
+    }
   };
 
   return (
@@ -54,7 +75,14 @@ function ApprovalsPage() {
         subtitle={`${items.length} solicitação(ões) aguardando a supervisão.`}
       />
 
-      {items.length === 0 ? (
+      {loading ? (
+        <Card>
+          <CardContent className="py-14 text-center">
+            <Loader2 className="size-6 animate-spin mx-auto text-primary mb-2" />
+            <p className="text-sm text-muted-foreground">Carregando aprovações pendentes...</p>
+          </CardContent>
+        </Card>
+      ) : items.length === 0 ? (
         <Card>
           <CardContent className="py-14 text-center">
             <Inbox className="size-8 mx-auto text-muted-foreground mb-3" />

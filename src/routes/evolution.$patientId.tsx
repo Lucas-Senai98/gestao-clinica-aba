@@ -2,7 +2,8 @@ import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
 import { requireAuth } from "@/lib/route-guard";
 import { AppLayout, PageHeader } from "@/components/app-layout";
-import { patients, monthlyPerformance, yesNoByTarget, intensityFrequency } from "@/lib/mock-data";
+import { useCurrentUser } from "@/lib/auth-context";
+import { getPatientById } from "@/queries/patients";
 import {
   getPatientAnalytics,
   type TargetPerformancePoint,
@@ -84,7 +85,8 @@ export const Route = createFileRoute("/evolution/$patientId")({
 
 function EvolutionPage() {
   const { patientId } = useParams({ from: "/evolution/$patientId" });
-  const patient       = patients.find((x) => x.id === patientId) ?? patients[0];
+  const currentUser   = useCurrentUser();
+  const [patient, setPatient] = useState<{ id: string; name: string } | null>(null);
 
   // ── Filtros do topo ───────────────────────────────────────────────────────
   const [selectedMonth, setSelectedMonth] = useState("08"); // Agosto
@@ -109,6 +111,20 @@ function EvolutionPage() {
   // Programas selecionados para exibir no Gráfico 1
   const [selectedTargets, setSelectedTargets] = useState<string[]>([]);
 
+  useEffect(() => {
+    if (currentUser) {
+      getPatientById({
+        data: {
+          patientId,
+          userId: currentUser.id,
+          role: currentUser.role,
+        },
+      })
+        .then((p) => setPatient({ id: p.id, name: p.name }))
+        .catch(() => setPatient({ id: patientId, name: "Paciente" }));
+    }
+  }, [patientId, currentUser]);
+
   // Carrega dados analíticos via Server Function
   useEffect(() => {
     let unmounted = false;
@@ -124,65 +140,30 @@ function EvolutionPage() {
       .then((res) => {
         if (unmounted) return;
 
-        // Se houver dados reais no D1
-        if (res.targetPerformanceData.length > 0 || res.yesNoData.length > 0) {
-          setAnalyticsData({
-            targetPerformanceData: res.targetPerformanceData,
-            yesNoData: res.yesNoData,
-            behaviorDurationData: res.behaviorDurationData,
-            availableTargets: res.availableTargets,
-            totalSessionsCount: res.totalSessionsCount,
-          });
-          setSelectedTargets(res.availableTargets);
-        } else {
-          // Mock Fallback se não houver registros no D1 no mês selecionado
-          useMockFallback();
-        }
+        setAnalyticsData({
+          targetPerformanceData: res.targetPerformanceData || [],
+          yesNoData: res.yesNoData || [],
+          behaviorDurationData: res.behaviorDurationData || [],
+          availableTargets: res.availableTargets || [],
+          totalSessionsCount: res.totalSessionsCount || 0,
+        });
+        setSelectedTargets(res.availableTargets || []);
       })
       .catch(() => {
-        if (!unmounted) useMockFallback();
+        if (!unmounted) {
+          setAnalyticsData({
+            targetPerformanceData: [],
+            yesNoData: [],
+            behaviorDurationData: [],
+            availableTargets: [],
+            totalSessionsCount: 0,
+          });
+          setSelectedTargets([]);
+        }
       })
       .finally(() => {
         if (!unmounted) setLoading(false);
       });
-
-    function useMockFallback() {
-      const mockTargets = ["Pareamento por cor", "Imitação motora", "Seguir instruções"];
-
-      // Converte monthlyPerformance do mock-data em formato de pontos
-      const mockLineData: TargetPerformancePoint[] = monthlyPerformance.map((item) => ({
-        date: item.day,
-        fullDate: `2026-${selectedMonth}-${item.day.padStart(2, "0")}`,
-        "Pareamento por cor": item.desempenho,
-        "Imitação motora": Math.max(40, item.desempenho - 10),
-        "Seguir instruções": Math.min(100, item.desempenho + 5),
-      }));
-
-      // Mock para o gráfico Sim/Não
-      const mockYesNo: YesNoPoint[] = monthlyPerformance.map((item, idx) => ({
-        date: item.day,
-        Sim: (idx % 3) + 2,
-        Nao: idx % 2 === 0 ? 1 : 0,
-      }));
-
-      // Mock para Duração por Intensidade
-      const mockBehaviorDuration: BehaviorDurationPoint[] = intensityFrequency.map((item) => ({
-        date: item.dia,
-        Leve: item.leve * 5,
-        Moderada: item.moderada * 8,
-        Intensa: item.intensa * 12,
-        totalDuration: item.leve * 5 + item.moderada * 8 + item.intensa * 12,
-      }));
-
-      setAnalyticsData({
-        targetPerformanceData: mockLineData,
-        yesNoData: mockYesNo,
-        behaviorDurationData: mockBehaviorDuration,
-        availableTargets: mockTargets,
-        totalSessionsCount: 14,
-      });
-      setSelectedTargets(mockTargets);
-    }
 
     return () => {
       unmounted = true;
@@ -212,13 +193,13 @@ function EvolutionPage() {
       {/* Navegação de volta e Ações */}
       <div className="flex items-center justify-between gap-3 mb-3">
         <Button asChild variant="ghost" size="sm" className="-ml-2">
-          <Link to="/patient/$patientId" params={{ patientId: patient.id }}>
+          <Link to="/patient/$patientId" params={{ patientId: patient?.id || patientId }}>
             <ArrowLeft className="size-4" /> Voltar ao Prontuário
           </Link>
         </Button>
 
         <Button asChild variant="secondary" size="sm" className="border border-primary/20 bg-primary-soft text-primary hover:bg-primary/20">
-          <Link to="/patients/$patientId/print-report" params={{ patientId: patient.id }} target="_blank">
+          <Link to="/patients/$patientId/print-report" params={{ patientId: patient?.id || patientId }} target="_blank">
             <FileDown className="size-4 mr-1" /> Exportar Relatório PDF
           </Link>
         </Button>
@@ -228,7 +209,7 @@ function EvolutionPage() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
         <div>
           <PageHeader
-            title={`Evolução Clínica · ${patient.name}`}
+            title={`Evolução Clínica · ${patient?.name || "Paciente"}`}
             subtitle="Painel analítico automatizado de sessões e desempenho ABA."
           />
         </div>

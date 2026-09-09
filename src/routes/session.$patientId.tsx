@@ -1,9 +1,9 @@
 import { createFileRoute, Link, useNavigate, useParams } from "@tanstack/react-router";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { requireAuth } from "@/lib/route-guard";
 import { useCurrentUser } from "@/lib/auth-context";
 import { saveDailyRecord } from "@/queries/sessions";
-import { patients } from "@/lib/mock-data";
+import { getPatientById } from "@/queries/patients";
 import { AppLayout, PageHeader } from "@/components/app-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -96,7 +96,21 @@ function SessionForm() {
   const { patientId } = useParams({ from: "/session/$patientId" });
   const navigate      = useNavigate();
   const currentUser   = useCurrentUser();
-  const patient       = patients.find((p) => p.id === patientId) ?? patients[0];
+  const [patient, setPatient] = useState<{ id: string; name: string } | null>(null);
+
+  useEffect(() => {
+    if (currentUser) {
+      getPatientById({
+        data: {
+          patientId,
+          userId: currentUser.id,
+          role: currentUser.role,
+        },
+      })
+        .then((p) => setPatient({ id: p.id, name: p.name }))
+        .catch(() => setPatient({ id: patientId, name: "Paciente" }));
+    }
+  }, [patientId, currentUser]);
 
   // ── Estado: cabeçalho da sessão ───────────────────────────────────────────
   const [sessionDate, setSessionDate] = useState(todayISO());
@@ -207,7 +221,7 @@ function SessionForm() {
       });
 
       toast.success("Folha de registro salva com sucesso! ✅", {
-        description: `Sessão de ${patient.name} arquivada no prontuário (${result.targets_saved} programa${result.targets_saved !== 1 ? "s" : ""}${result.behaviors_saved > 0 ? ` · ${result.behaviors_saved} comportamento${result.behaviors_saved !== 1 ? "s" : ""}` : ""}).`,
+        description: `Sessão de ${patient?.name ?? "Paciente"} arquivada no prontuário (${result.targets_saved} programa${result.targets_saved !== 1 ? "s" : ""}${result.behaviors_saved > 0 ? ` · ${result.behaviors_saved} comportamento${result.behaviors_saved !== 1 ? "s" : ""}` : ""}).`,
         duration: 4000,
       });
 
@@ -246,7 +260,7 @@ function SessionForm() {
             <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">
               Paciente
             </p>
-            <p className="font-medium text-sm">{patient.name}</p>
+            <p className="font-medium text-sm">{patient?.name ?? "Carregando..."}</p>
           </div>
           <div>
             <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">

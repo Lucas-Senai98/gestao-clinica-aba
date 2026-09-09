@@ -1,10 +1,12 @@
-import { createFileRoute, Link, useNavigate, notFound } from "@tanstack/react-router";
-import { requireAuth, requireRole } from "@/lib/route-guard";
-import { useState } from "react";
+import { createFileRoute, Link, useNavigate, useParams } from "@tanstack/react-router";
+import { requireAuth } from "@/lib/route-guard";
+import { useState, useEffect } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
+import { useCurrentUser } from "@/lib/auth-context";
 import { AppLayout, PageHeader } from "@/components/app-layout";
-import { patients, therapists } from "@/lib/mock-data";
+import { getPatientById, updatePatient } from "@/queries/patients";
+import { getClinicTeam } from "@/queries/team";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,35 +21,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Save, UserCog } from "lucide-react";
+import { ArrowLeft, Save, UserCog, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/patients/$patientId")({
-  loader: ({ params }) => {
-    const patient = patients.find((p) => p.id === params.patientId);
-    if (!patient) throw notFound();
-    return { patient };
-  },
   beforeLoad: requireAuth(),
-  head: ({ loaderData }) => {
-    if (!loaderData) {
-      return {
-        meta: [{ title: "Paciente não encontrado — Gestão Clínica ABA" }, { name: "robots", content: "noindex" }],
-      };
-    }
-    const title = `Editar ${loaderData.patient.name} — Gestão Clínica ABA`;
-    const description = `Atualize dados pessoais, responsável, convênio e terapias indicadas de ${loaderData.patient.name}.`;
-    return {
-      meta: [
-        { title },
-        { name: "description", content: description },
-        { property: "og:title", content: title },
-        { property: "og:description", content: description },
-        { property: "og:type", content: "website" },
-        { name: "twitter:card", content: "summary_large_image" },
-      ],
-    };
-  },
-  notFoundComponent: PatientNotFound,
+  head: () => ({
+    meta: [
+      { title: "Editar Paciente — Gestão Clínica ABA" },
+      { name: "description", content: "Atualize dados pessoais, responsável, convênio e terapias indicadas." },
+    ],
+  }),
   component: EditPatient,
 });
 
@@ -105,34 +88,26 @@ function Field({
   );
 }
 
-function PatientNotFound() {
-  return (
-    <AppLayout>
-      <PageHeader title="Paciente não encontrado" subtitle="O cadastro solicitado não existe ou foi removido." />
-      <Button asChild variant="outline">
-        <Link to="/patients">
-          <ArrowLeft className="size-3.5" /> Voltar para pacientes
-        </Link>
-      </Button>
-    </AppLayout>
-  );
-}
-
 function EditPatient() {
-  const { patient } = Route.useLoaderData();
+  const { patientId } = useParams({ from: "/patients/$patientId" });
+  const currentUser = useCurrentUser();
   const navigate = useNavigate();
 
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [therapistsList, setTherapistsList] = useState<Array<{ id: string; name: string; specialty: string }>>([]);
+
   const [form, setForm] = useState({
-    name: patient.name,
-    birthDate: `${2026 - patient.age}-03-12`,
+    name: "",
+    birthDate: "2020-01-01",
     gender: "Não informar",
     cpf: "",
-    diagnosis: patient.diagnosis,
-    therapistId: patient.therapistId,
-    guardianName: patient.guardian,
+    diagnosis: "",
+    therapistId: "",
+    guardianName: "",
     guardianRelation: "Mãe/Pai",
-    guardianPhone: "(11) 90000-0000",
-    guardianEmail: "responsavel@email.com",
+    guardianPhone: "",
+    guardianEmail: "",
     address: "",
     school: "",
     insurance: "Particular",
@@ -144,12 +119,70 @@ function EditPatient() {
   const [selectedTherapies, setSelectedTherapies] = useState<string[]>(["ABA Intensivo"]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  useEffect(() => {
+    let unmounted = false;
+    setLoading(true);
+
+    Promise.all([
+      getPatientById({
+        data: {
+          patientId,
+          userId: currentUser?.id || "u1",
+          role: currentUser?.role || "admin",
+        },
+      }).catch(() => null),
+      getClinicTeam().catch(() => []),
+    ])
+      .then(([patientData, teamData]) => {
+        if (unmounted) return;
+
+        if (teamData && teamData.length > 0) {
+          setTherapistsList(
+            teamData.map((t: any) => ({
+              id: t.id,
+              name: t.name,
+              specialty: t.specialty,
+            })),
+          );
+        }
+
+        if (patientData) {
+          setForm({
+            name: patientData.name || "",
+            birthDate: patientData.birth_date || "2020-01-01",
+            gender: (patientData as any).gender || "Não informar",
+            cpf: (patientData as any).cpf || "",
+            diagnosis: patientData.diagnosis || "",
+            therapistId: (patientData as any).therapist_id || (teamData?.[0]?.id ?? "u2"),
+            guardianName: patientData.guardian_name || "",
+            guardianRelation: (patientData as any).guardian_relation || "Mãe/Pai",
+            guardianPhone: patientData.guardian_phone || "",
+            guardianEmail: patientData.guardian_email || "",
+            address: (patientData as any).address || "",
+            school: (patientData as any).school || "",
+            insurance: (patientData as any).insurance || "Particular",
+            insuranceNumber: (patientData as any).insurance_number || "",
+            weeklyHours: `${(patientData as any).weekly_hours || 8}h`,
+            status: patientData.status || "Ativo",
+            notes: (patientData as any).notes || "",
+          });
+        }
+      })
+      .finally(() => {
+        if (!unmounted) setLoading(false);
+      });
+
+    return () => {
+      unmounted = true;
+    };
+  }, [patientId, currentUser]);
+
   const set = (key: keyof typeof form, value: string) => setForm((f) => ({ ...f, [key]: value }));
 
   const toggleTherapy = (t: string) =>
     setSelectedTherapies((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const result = schema.safeParse(form);
     if (!result.success) {
@@ -167,12 +200,59 @@ function EditPatient() {
       toast.error("Selecione ao menos uma terapia indicada.");
       return;
     }
-    setErrors({});
-    toast.success(`Cadastro de ${result.data.name} atualizado!`, {
-      description: "As alterações seguem para registro no prontuário.",
-    });
-    navigate({ to: "/patients" });
+
+    setSaving(true);
+    try {
+      await updatePatient({
+        data: {
+          id: patientId,
+          data: {
+            name: form.name,
+            birthDate: form.birthDate,
+            gender: form.gender,
+            cpf: form.cpf,
+            diagnosis: form.diagnosis,
+            therapistId: form.therapistId,
+            guardianName: form.guardianName,
+            guardianRelation: form.guardianRelation,
+            guardianPhone: form.guardianPhone,
+            guardianEmail: form.guardianEmail,
+            address: form.address,
+            school: form.school,
+            insurance: form.insurance,
+            insuranceNumber: form.insuranceNumber,
+            weeklyHours: form.weeklyHours.replace("h", ""),
+            status: form.status,
+            notes: form.notes,
+            therapies: selectedTherapies,
+          },
+        },
+      });
+
+      setErrors({});
+      toast.success(`Cadastro de ${result.data.name} atualizado!`, {
+        description: "As alterações foram gravadas no banco D1 com sucesso.",
+      });
+      navigate({ to: "/patients" });
+    } catch (err) {
+      toast.error("Erro ao salvar paciente", {
+        description: err instanceof Error ? err.message : "Erro desconhecido",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <AppLayout>
+        <Card className="p-12 text-center max-w-xl mx-auto my-12">
+          <Loader2 className="size-8 animate-spin mx-auto text-primary" />
+          <p className="text-sm text-muted-foreground mt-3">Carregando dados do paciente...</p>
+        </Card>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -185,7 +265,7 @@ function EditPatient() {
       </div>
 
       <PageHeader
-        title={`Editar ${patient.name}`}
+        title={`Editar ${form.name || "Paciente"}`}
         subtitle="Atualize dados pessoais, responsável, convênio e plano terapêutico."
       />
 
@@ -272,9 +352,9 @@ function EditPatient() {
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
                 <SelectContent>
-                  {therapists.map((t) => (
+                  {therapistsList.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
-                      {t.name} · {t.role}
+                      {t.name} · {t.specialty}
                     </SelectItem>
                   ))}
                 </SelectContent>

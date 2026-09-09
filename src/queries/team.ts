@@ -126,7 +126,16 @@ export const getClinicTeam = createServerFn({ method: "GET" }).handler(async () 
       }>();
 
     if (rows?.results && rows.results.length > 0) {
-      const d1Members = rows.results.map((r): TeamMemberItem => {
+      const d1Members = rows.results.map((r: {
+        id: string;
+        email: string;
+        name: string;
+        role: "admin" | "therapist";
+        registry: string | null;
+        avatar_initials: string | null;
+        is_active: number;
+        caseload: number;
+      }): TeamMemberItem => {
         const roleTyped = (r.role === "admin" ? "admin" : "therapist") as "admin" | "therapist";
         return {
           id: r.id,
@@ -143,7 +152,7 @@ export const getClinicTeam = createServerFn({ method: "GET" }).handler(async () 
       });
 
       // Mescla com membros criados dinamicamente no ambiente de dev que não estejam duplicados
-      const d1Emails = new Set(d1Members.map((m) => m.email.toLowerCase()));
+      const d1Emails = new Set(d1Members.map((m: TeamMemberItem) => m.email.toLowerCase()));
       const extraDevMembers = DEV_TEAM_MEMBERS.filter((m) => !d1Emails.has(m.email.toLowerCase()));
 
       return [...d1Members, ...extraDevMembers];

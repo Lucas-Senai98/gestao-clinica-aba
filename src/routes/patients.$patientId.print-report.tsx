@@ -1,11 +1,12 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { requireAuth } from "@/lib/route-guard";
-import { patients, monthlyPerformance, yesNoByTarget, intensityFrequency, parentFeed as mockFeed } from "@/lib/mock-data";
-import { CHECKLIST_STEPS, REPERTOIRE_TEMPLATE, SKILL_LEVELS, type SkillLevel } from "@/lib/pep-constants";
+import { useCurrentUser } from "@/lib/auth-context";
+import { CHECKLIST_STEPS, type SkillLevel } from "@/lib/pep-constants";
 import { getClinicalChecklist, getRepertoireRecords } from "@/queries/pep";
 import { getPatientAnalytics } from "@/queries/analytics";
 import { getParentFeed } from "@/queries/communication";
+import { getPatientById } from "@/queries/patients";
 import { recordAuditLog } from "@/queries/notifications_audit";
 import logo from "@/assets/logo-gize.png";
 import { Button } from "@/components/ui/button";
@@ -54,21 +55,20 @@ export const Route = createFileRoute("/patients/$patientId/print-report")({
 
 function PrintReportPage() {
   const { patientId } = useParams({ from: "/patients/$patientId/print-report" });
-  const patient       = patients.find((x) => x.id === patientId) ?? patients[0];
+  const currentUser   = useCurrentUser();
+  const [patient, setPatient] = useState<{
+    id: string;
+    name: string;
+    birth_date?: string;
+    diagnosis?: string;
+    guardian_name?: string;
+    health_plan?: string;
+  } | null>(null);
 
   const [loading, setLoading] = useState(true);
 
   // Dados do PEP / Checklist
-  const [checklist, setChecklist] = useState<Record<number, { done: boolean; text: string }>>({
-    1: { done: true, text: "Comportamento observável de esquiva ao receber demanda verbal." },
-    2: { done: true, text: "Ocorre em ambiente de mesa durante tarefas pré-acadêmicas." },
-    3: { done: true, text: "Acontece aproximadamente 3 vezes por sessão." },
-    4: { done: true, text: "Fuga de demanda verbal." },
-    5: { done: true, text: "Falta mando funcional para pedir pausa." },
-    6: { done: true, text: "Ensino de comunicação funcional (PECS / Mando)." },
-    7: { done: true, text: "Introduzir cartão de pausa antes da elevação de ansiedade." },
-    8: { done: true, text: "Evitar aumentar tempo de mesa bruscamente." },
-  });
+  const [checklist, setChecklist] = useState<Record<number, { done: boolean; text: string }>>({});
 
   // Dados do Repertório (5 Categorias)
   const [repertoire, setRepertoire] = useState<
@@ -102,32 +102,47 @@ function PrintReportPage() {
     }).catch(() => null);
 
     Promise.all([
+      getPatientById({
+        data: {
+          patientId,
+          userId: currentUser?.id || "u1",
+          role: currentUser?.role || "admin",
+        },
+      }).catch(() => null),
       getClinicalChecklist({ data: { patientId } }).catch(() => null),
       getRepertoireRecords({ data: { patientId } }).catch(() => []),
       getPatientAnalytics({ data: { patientId } }).catch(() => null),
       getParentFeed({ data: { patientId } }).catch(() => []),
     ])
-      .then(([chkRes, repRes, anaRes, devRes]) => {
+      .then(([patRes, chkRes, repRes, anaRes, devRes]) => {
         if (unmounted) return;
+
+        // 0. Paciente
+        if (patRes) {
+          setPatient(patRes);
+        } else {
+          setPatient({ id: patientId, name: "Paciente" });
+        }
 
         // 1. Checklist ABA
         if (chkRes) {
+          const c = chkRes as any;
           setChecklist({
-            1: { done: Boolean(chkRes.step1_done), text: (chkRes.step1_text as string) || "" },
-            2: { done: Boolean(chkRes.step2_done), text: (chkRes.step2_text as string) || "" },
-            3: { done: Boolean(chkRes.step3_done), text: (chkRes.step3_text as string) || "" },
-            4: { done: Boolean(chkRes.step4_done), text: (chkRes.step4_text as string) || "" },
-            5: { done: Boolean(chkRes.step5_done), text: (chkRes.step5_text as string) || "" },
-            6: { done: Boolean(chkRes.step6_done), text: (chkRes.step6_text as string) || "" },
-            7: { done: Boolean(chkRes.step7_done), text: (chkRes.step7_text as string) || "" },
-            8: { done: Boolean(chkRes.step8_done), text: (chkRes.step8_text as string) || "" },
+            1: { done: Boolean(c.step1_done), text: (c.step1_text as string) || "" },
+            2: { done: Boolean(c.step2_done), text: (c.step2_text as string) || "" },
+            3: { done: Boolean(c.step3_done), text: (c.step3_text as string) || "" },
+            4: { done: Boolean(c.step4_done), text: (c.step4_text as string) || "" },
+            5: { done: Boolean(c.step5_done), text: (c.step5_text as string) || "" },
+            6: { done: Boolean(c.step6_done), text: (c.step6_text as string) || "" },
+            7: { done: Boolean(c.step7_done), text: (c.step7_text as string) || "" },
+            8: { done: Boolean(c.step8_done), text: (c.step8_text as string) || "" },
           });
         }
 
         // 2. Repertório
         if (repRes && repRes.length > 0) {
           setRepertoire(
-            repRes.map((r) => ({
+            repRes.map((r: any) => ({
               category: r.category,
               skill: r.skill,
               level: r.level,
@@ -136,76 +151,39 @@ function PrintReportPage() {
             })),
           );
         } else {
-          // Fallback de Repertório
-          const repFallback: Array<{ category: string; skill: string; level: string; start: string; end: string }> = [];
-          Object.entries(REPERTOIRE_TEMPLATE).forEach(([cat, list]) => {
-            list.forEach((skillName, i) => {
-              repFallback.push({
-                category: cat,
-                skill: skillName,
-                level: i % 2 === 0 ? "Adquirido" : "Em aquisição",
-                start: "01/03/2026",
-                end: i % 2 === 0 ? "15/06/2026" : "-",
-              });
-            });
-          });
-          setRepertoire(repFallback);
+          setRepertoire([]);
         }
 
         // 3. Analytics & Gráficos
-        if (anaRes && anaRes.targetPerformanceData.length > 0) {
+        if (anaRes && anaRes.targetPerformanceData && anaRes.targetPerformanceData.length > 0) {
           setAnalytics({
             targetPerformanceData: anaRes.targetPerformanceData,
-            yesNoData: anaRes.yesNoData,
-            behaviorDurationData: anaRes.behaviorDurationData,
-            availableTargets: anaRes.availableTargets,
+            yesNoData: anaRes.yesNoData || [],
+            behaviorDurationData: anaRes.behaviorDurationData || [],
+            availableTargets: anaRes.availableTargets || [],
           });
         } else {
-          // Fallback para os 3 gráficos
-          const mockTargets = ["Pareamento por cor", "Imitação motora", "Seguir instruções"];
           setAnalytics({
-            targetPerformanceData: monthlyPerformance.map((item) => ({
-              date: item.day,
-              "Pareamento por cor": item.desempenho,
-              "Imitação motora": Math.max(40, item.desempenho - 10),
-              "Seguir instruções": Math.min(100, item.desempenho + 5),
-            })),
-            yesNoData: monthlyPerformance.map((item, idx) => ({
-              date: item.day,
-              Sim: (idx % 3) + 2,
-              Nao: idx % 2 === 0 ? 1 : 0,
-            })),
-            behaviorDurationData: intensityFrequency.map((item) => ({
-              date: item.dia,
-              Leve: item.leve * 5,
-              Moderada: item.moderada * 8,
-              Intensa: item.intensa * 12,
-            })),
-            availableTargets: mockTargets,
+            targetPerformanceData: [],
+            yesNoData: [],
+            behaviorDurationData: [],
+            availableTargets: [],
           });
         }
 
         // 4. Devolutivas
         if (devRes && devRes.length > 0) {
           setDevolutivas(
-            devRes.map((d) => ({
-              date: d.published_at.slice(0, 10),
+            devRes.map((d: any) => ({
+              date: d.published_at ? d.published_at.slice(0, 10) : "-",
               title: d.title,
               body: d.body,
               mood: d.mood,
-              therapist: d.author_name,
+              therapist: d.author_name || "Terapeuta",
             })),
           );
         } else {
-          setDevolutivas(
-            mockFeed.map((m) => ({
-              date: m.date,
-              title: m.title,
-              body: m.body,
-              mood: m.mood,
-              therapist: m.therapist,
-            })),
-          );
+          setDevolutivas([]);
         }
       })
       .finally(() => {
@@ -215,7 +193,7 @@ function PrintReportPage() {
     return () => {
       unmounted = true;
     };
-  }, [patientId]);
+  }, [patientId, currentUser]);
 
   const handleTriggerPrint = () => {
     window.print();
@@ -227,12 +205,16 @@ function PrintReportPage() {
     year: "numeric",
   });
 
+  const patientAge = patient?.birth_date
+    ? `${Math.floor((Date.now() - new Date(patient.birth_date).getTime()) / (365.25 * 24 * 3600 * 1000))} anos`
+    : "Idade não informada";
+
   return (
     <div className="min-h-screen bg-slate-100 print:bg-white text-slate-900 font-sans p-0 sm:p-6 print:p-0">
       {/* ── BARRA SUPERIOR DE AÇÕES (OCULTA NA IMPRESSÃO) ───────────────────── */}
       <div className="max-w-4xl mx-auto mb-4 print:hidden flex items-center justify-between gap-3 bg-white p-4 rounded-xl border shadow-sm">
         <Button asChild variant="ghost" size="sm">
-          <Link to="/patient/$patientId" params={{ patientId: patient.id }}>
+          <Link to="/patient/$patientId" params={{ patientId: patient?.id || patientId }}>
             <ArrowLeft className="size-4 mr-1" /> Voltar ao Prontuário
           </Link>
         </Button>
@@ -287,19 +269,19 @@ function PrintReportPage() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
               <div>
                 <span className="text-slate-500 block">Nome do Paciente:</span>
-                <span className="font-semibold text-slate-900">{patient.name}</span>
+                <span className="font-semibold text-slate-900">{patient?.name || "Paciente"}</span>
               </div>
               <div>
                 <span className="text-slate-500 block">Idade / Responsável:</span>
-                <span className="font-semibold text-slate-900">{patient.age} anos · {patient.guardian}</span>
+                <span className="font-semibold text-slate-900">{patientAge} · {patient?.guardian_name || "Responsável"}</span>
               </div>
               <div>
                 <span className="text-slate-500 block">Diagnóstico:</span>
-                <span className="font-semibold text-slate-900">{patient.diagnosis}</span>
+                <span className="font-semibold text-slate-900">{patient?.diagnosis || "Não informado"}</span>
               </div>
               <div>
                 <span className="text-slate-500 block">Convênio / Plano:</span>
-                <span className="font-semibold text-slate-900">Bradesco Saúde (Particular/Convênio)</span>
+                <span className="font-semibold text-slate-900">{patient?.health_plan || "Particular / Convênio"}</span>
               </div>
             </div>
           </section>
@@ -352,15 +334,23 @@ function PrintReportPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  {repertoire.slice(0, 10).map((r, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50">
-                      <td className="p-2.5 font-medium text-slate-800">{r.category}</td>
-                      <td className="p-2.5 text-slate-700">{r.skill}</td>
-                      <td className="p-2.5 font-semibold text-slate-900">{r.level}</td>
-                      <td className="p-2.5 text-slate-500">{r.start}</td>
-                      <td className="p-2.5 text-slate-500">{r.end}</td>
+                  {repertoire.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="p-4 text-center text-slate-500 italic">
+                        Nenhuma habilidade registrada no repertório para este paciente.
+                      </td>
                     </tr>
-                  ))}
+                  ) : (
+                    repertoire.slice(0, 10).map((r, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50">
+                        <td className="p-2.5 font-medium text-slate-800">{r.category}</td>
+                        <td className="p-2.5 text-slate-700">{r.skill}</td>
+                        <td className="p-2.5 font-semibold text-slate-900">{r.level}</td>
+                        <td className="p-2.5 text-slate-500">{r.start}</td>
+                        <td className="p-2.5 text-slate-500">{r.end}</td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -448,15 +438,21 @@ function PrintReportPage() {
             </h2>
 
             <div className="space-y-2 text-xs">
-              {devolutivas.slice(0, 3).map((d, i) => (
-                <div key={i} className="p-3 border border-slate-200 rounded-md bg-white">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-bold text-slate-900">{d.title}</span>
-                    <span className="text-slate-500 text-[11px]">{d.date} · Terapeuta: {d.therapist}</span>
-                  </div>
-                  <p className="text-slate-700 leading-relaxed">{d.body}</p>
+              {devolutivas.length === 0 ? (
+                <div className="p-3 border border-slate-200 rounded-md bg-white text-slate-500 italic">
+                  Nenhuma devolutiva registrada no período.
                 </div>
-              ))}
+              ) : (
+                devolutivas.slice(0, 3).map((d, i) => (
+                  <div key={i} className="p-3 border border-slate-200 rounded-md bg-white">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-bold text-slate-900">{d.title}</span>
+                      <span className="text-slate-500 text-[11px]">{d.date} · Terapeuta: {d.therapist}</span>
+                    </div>
+                    <p className="text-slate-700 leading-relaxed">{d.body}</p>
+                  </div>
+                ))
+              )}
             </div>
           </section>
 

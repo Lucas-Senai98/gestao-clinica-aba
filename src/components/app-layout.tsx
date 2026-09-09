@@ -215,7 +215,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
             );
           })}
           <Link
-            to="/evolution/p1"
+            to="/evolution/$patientId"
+            params={{ patientId: "p1" }}
             className="flex flex-col items-center gap-0.5 py-1.5 rounded-lg text-[10px] font-medium text-muted-foreground"
           >
             <LineChart className="size-5" />

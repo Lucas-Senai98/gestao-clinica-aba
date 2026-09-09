@@ -4,7 +4,6 @@ import { requireAuth, requireRole } from "@/lib/route-guard";
 import { useCurrentUser } from "@/lib/auth-context";
 import { AppLayout, PageHeader } from "@/components/app-layout";
 import { getParentFeed, getAnnouncements } from "@/queries/communication";
-import { parentFeed as mockFeed, announcements as mockAnnouncements } from "@/lib/mock-data";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -68,62 +67,13 @@ function ParentPortalPage() {
     ])
       .then(([feedRes, annRes]) => {
         if (unmounted) return;
-
-        if (feedRes && feedRes.length > 0) {
-          setFeedItems(feedRes);
-        } else {
-          // Fallback para mock se o banco local não tiver inserções de dev ainda
-          setFeedItems(
-            mockFeed.map((f) => ({
-              id: f.id,
-              title: f.title,
-              body: f.body,
-              mood: f.mood,
-              home_practices: f.homePractices.join(" • "),
-              published_at: f.date,
-              patient_name: "Lucas Almeida",
-              author_name: f.therapist,
-            })),
-          );
-        }
-
-        if (annRes && annRes.length > 0) {
-          setAnnouncementItems(annRes);
-        } else {
-          setAnnouncementItems(
-            mockAnnouncements.map((a) => ({
-              id: a.id,
-              title: a.title,
-              body: a.body,
-              published_at: a.date,
-              author_name: "Coordenação GiZé's",
-            })),
-          );
-        }
+        setFeedItems(feedRes || []);
+        setAnnouncementItems(annRes || []);
       })
       .catch(() => {
         if (!unmounted) {
-          setFeedItems(
-            mockFeed.map((f) => ({
-              id: f.id,
-              title: f.title,
-              body: f.body,
-              mood: f.mood,
-              home_practices: f.homePractices.join(" • "),
-              published_at: f.date,
-              patient_name: "Lucas Almeida",
-              author_name: f.therapist,
-            })),
-          );
-          setAnnouncementItems(
-            mockAnnouncements.map((a) => ({
-              id: a.id,
-              title: a.title,
-              body: a.body,
-              published_at: a.date,
-              author_name: "Coordenação GiZé's",
-            })),
-          );
+          setFeedItems([]);
+          setAnnouncementItems([]);
         }
       })
       .finally(() => {
@@ -160,28 +110,34 @@ function ParentPortalPage() {
               <h2 className="text-sm font-semibold text-foreground">Quadro de Avisos da Clínica</h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {announcementItems.map((a) => (
-                <Card
-                  key={a.id}
-                  className="border-primary/20 bg-gradient-to-br from-primary-soft/40 to-background shadow-xs"
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-semibold text-sm text-foreground">{a.title}</p>
-                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                          {a.body}
-                        </p>
+            {announcementItems.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic bg-muted/20 p-4 rounded-lg border border-dashed">
+                Nenhum comunicado da clínica publicado no momento.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {announcementItems.map((a) => (
+                  <Card
+                    key={a.id}
+                    className="border-primary/20 bg-gradient-to-br from-primary-soft/40 to-background shadow-xs"
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-semibold text-sm text-foreground">{a.title}</p>
+                          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                            {a.body}
+                          </p>
+                        </div>
+                        <Badge variant="secondary" className="shrink-0 text-[10px] bg-background">
+                          {a.published_at.slice(0, 10)}
+                        </Badge>
                       </div>
-                      <Badge variant="secondary" className="shrink-0 text-[10px] bg-background">
-                        {a.published_at.slice(0, 10)}
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </section>
 
           {/* ── FEED DE DEVOLUTIVAS DIÁRIAS (DO TERAPEUTA PARA OS PAIS) ───────── */}
@@ -200,7 +156,12 @@ function ParentPortalPage() {
               </Badge>
             </div>
 
-            <div className="space-y-4">
+            {feedItems.length === 0 ? (
+              <Card className="p-6 text-center border-dashed">
+                <p className="text-xs text-muted-foreground">Nenhuma devolutiva diária registrada ainda para seu dependente.</p>
+              </Card>
+            ) : (
+              <div className="space-y-4">
               {feedItems.map((item) => {
                 const moodKey = (item.mood || "bom") as keyof typeof moodConfig;
                 const moodInfo = moodConfig[moodKey] ?? moodConfig.bom;
@@ -263,7 +224,8 @@ function ParentPortalPage() {
                 );
               })}
             </div>
-          </section>
+          )}
+        </section>
         </div>
       )}
     </AppLayout>

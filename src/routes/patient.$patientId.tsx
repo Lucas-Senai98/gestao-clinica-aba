@@ -1,8 +1,9 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { requireAuth } from "@/lib/route-guard";
+import { useCurrentUser } from "@/lib/auth-context";
 import { AppLayout, PageHeader } from "@/components/app-layout";
-import { patients } from "@/lib/mock-data";
+import { getPatientById } from "@/queries/patients";
 import {
   CHECKLIST_STEPS,
   REPERTOIRE_TEMPLATE,
@@ -87,7 +88,46 @@ export const Route = createFileRoute("/patient/$patientId")({
 
 function PatientPEP() {
   const { patientId } = useParams({ from: "/patient/$patientId" });
-  const p = patients.find((x) => x.id === patientId) ?? patients[0];
+  const currentUser   = useCurrentUser();
+  const [patient, setPatient] = useState<{
+    id: string;
+    name: string;
+    diagnosis: string;
+    guardian_name?: string;
+    avatar_initials?: string | null;
+    birth_date?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (currentUser) {
+      getPatientById({
+        data: {
+          patientId,
+          userId: currentUser.id,
+          role: currentUser.role,
+        },
+      })
+        .then((res) => setPatient(res))
+        .catch(() =>
+          setPatient({
+            id: patientId,
+            name: "Paciente",
+            diagnosis: "TEA",
+            guardian_name: "Responsável",
+            avatar_initials: "PA",
+            birth_date: "2019-01-01",
+          }),
+        );
+    }
+  }, [patientId, currentUser]);
+
+  const pName = patient?.name || "Paciente";
+  const pAvatar = patient?.avatar_initials || pName.slice(0, 2).toUpperCase();
+  const pDiagnosis = patient?.diagnosis || "TEA";
+  const pGuardian = patient?.guardian_name || "Responsável";
+  const pAge = patient?.birth_date
+    ? Math.max(1, Math.floor((Date.now() - new Date(patient.birth_date).getTime()) / (365.25 * 86400000)))
+    : 5;
 
   return (
     <AppLayout>
@@ -98,33 +138,33 @@ function PatientPEP() {
           <div className="flex flex-col sm:flex-row gap-4 -mt-10">
             <Avatar className="size-20 ring-4 ring-background bg-primary-soft shadow-md">
               <AvatarFallback className="text-2xl bg-primary-soft text-primary font-semibold">
-                {p.avatar}
+                {pAvatar}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 sm:pt-10">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl font-semibold">{p.name}</h1>
+                <h1 className="text-xl font-semibold">{pName}</h1>
                 <Badge variant="secondary" className="font-normal">
-                  {p.diagnosis}
+                  {pDiagnosis}
                 </Badge>
               </div>
               <p className="text-sm text-muted-foreground mt-1">
-                {p.age} anos · Responsável: {p.guardian}
+                {pAge} anos · Responsável: {pGuardian}
               </p>
             </div>
             <div className="sm:pt-10 flex flex-wrap gap-2">
               <Button asChild variant="outline" size="sm">
-                <Link to="/evolution/$patientId" params={{ patientId: p.id }}>
+                <Link to="/evolution/$patientId" params={{ patientId }}>
                   <TrendingUp className="size-4" /> Evolução
                 </Link>
               </Button>
               <Button asChild variant="secondary" size="sm" className="border border-primary/20 bg-primary-soft text-primary hover:bg-primary/20">
-                <Link to="/patients/$patientId/print-report" params={{ patientId: p.id }} target="_blank">
+                <Link to="/patients/$patientId/print-report" params={{ patientId }} target="_blank">
                   <FileDown className="size-4 mr-1" /> Exportar Relatório PDF
                 </Link>
               </Button>
               <Button asChild size="sm">
-                <Link to="/session/$patientId" params={{ patientId: p.id }}>
+                <Link to="/session/$patientId" params={{ patientId }}>
                   <FileText className="size-4" /> Nova sessão
                 </Link>
               </Button>
@@ -149,17 +189,17 @@ function PatientPEP() {
 
         {/* TAB 1: CHECKLIST ABA (8 PASSOS) */}
         <TabsContent value="checklist">
-          <ClinicalChecklistTab patientId={p.id} />
+          <ClinicalChecklistTab patientId={patient?.id || patientId} />
         </TabsContent>
 
         {/* TAB 2: REPERTÓRIO INICIAL (5 CATEGORIAS) */}
         <TabsContent value="repertoire">
-          <RepertoireTab patientId={p.id} />
+          <RepertoireTab patientId={patient?.id || patientId} />
         </TabsContent>
 
         {/* TAB 3: REFORÇADORES & ESTEREOTIPIAS */}
         <TabsContent value="reinforcers">
-          <ReinforcersTab patientId={p.id} />
+          <ReinforcersTab patientId={patient?.id || patientId} />
         </TabsContent>
       </Tabs>
     </AppLayout>
@@ -192,7 +232,7 @@ function ClinicalChecklistTab({ patientId }: { patientId: string }) {
   useEffect(() => {
     let unmounted = false;
     getClinicalChecklist({ data: { patientId } })
-      .then((res) => {
+      .then((res: any) => {
         if (unmounted) return;
         if (res) {
           setSteps({
@@ -400,7 +440,7 @@ function RepertoireTab({ patientId }: { patientId: string }) {
         });
 
         // Preenche com os dados vindos do D1
-        records.forEach((r) => {
+        records.forEach((r: any) => {
           const cat = r.category;
           if (!grouped[cat]) grouped[cat] = [];
 
@@ -717,9 +757,9 @@ function ReinforcersTab({ patientId }: { patientId: string }) {
 
   const loadData = () => {
     getReinforcerData({ data: { patientId } })
-      .then((data) => {
+      .then((data: any) => {
         setReinforcers(
-          data.reinforcers.map((r) => ({
+          data.reinforcers.map((r: any) => ({
             id: r.id as string,
             item: r.item as string,
             category: r.category as string,
@@ -733,7 +773,7 @@ function ReinforcersTab({ patientId }: { patientId: string }) {
         );
 
         setStereotypies(
-          data.stereotypies.map((s) => ({
+          data.stereotypies.map((s: any) => ({
             id: s.id as string,
             category: s.category as string,
             topography: s.topography as string,

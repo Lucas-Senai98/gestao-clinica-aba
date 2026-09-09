@@ -28,22 +28,38 @@ const ChecklistInput = z.object({
   step8_done: z.boolean(), step8_text: z.string().optional(),
 });
 
+export interface ClinicalChecklistRecord {
+  id: string;
+  patient_id: string;
+  version: number;
+  step1_done: number | boolean; step1_text: string | null;
+  step2_done: number | boolean; step2_text: string | null;
+  step3_done: number | boolean; step3_text: string | null;
+  step4_done: number | boolean; step4_text: string | null;
+  step5_done: number | boolean; step5_text: string | null;
+  step6_done: number | boolean; step6_text: string | null;
+  step7_done: number | boolean; step7_text: string | null;
+  step8_done: number | boolean; step8_text: string | null;
+  updated_at: string;
+}
+
 export const getClinicalChecklist = createServerFn({ method: "GET" })
   .validator(z.object({ patientId: z.string() }))
-  .handler(async ({ data }) => {
+  .handler(async ({ data }): Promise<ClinicalChecklistRecord | null> => {
     const user = await getSessionUser();
     if (user) {
       await logAuditEvent(user.id, "VIEW_PEP", "clinical_checklists", data.patientId);
     }
     const db = getDB();
-    return db
+    const row = await db
       .prepare(
         `SELECT * FROM clinical_checklists
          WHERE patient_id = ?1
          ORDER BY version DESC LIMIT 1`,
       )
       .bind(data.patientId)
-      .first<Record<string, unknown>>();
+      .first<ClinicalChecklistRecord>();
+    return row || null;
   });
 
 export const saveClinicalChecklist = createServerFn({ method: "POST" })
@@ -239,23 +255,47 @@ export const saveRepertoireBatch = createServerFn({ method: "POST" })
 // REFORÇADORES E ESTEREOTIPIAS
 // ─────────────────────────────────────────────────────────────────────────────
 
+export interface ReinforcerRecordItem {
+  id: string;
+  item: string;
+  category: string;
+  preference: string;
+  procura_sozinho: number | boolean;
+  chora_se_retirado: number | boolean;
+  engagement_min?: number | null;
+  frequency_pct?: number | null;
+  notes?: string | null;
+}
+
+export interface StereotypyRecordItem {
+  id: string;
+  category: string;
+  topography: string;
+  frequency: string;
+  intensity: string;
+  context?: string | null;
+  interferes_teaching: number | boolean;
+  probable_function?: string | null;
+  notes?: string | null;
+}
+
 export const getReinforcerData = createServerFn({ method: "GET" })
   .validator(z.object({ patientId: z.string() }))
-  .handler(async ({ data }) => {
+  .handler(async ({ data }): Promise<{ reinforcers: ReinforcerRecordItem[]; stereotypies: StereotypyRecordItem[] }> => {
     const db = getDB();
     const [reinforcers, stereotypies] = await Promise.all([
       db.prepare(
         `SELECT id,item,category,preference,procura_sozinho,chora_se_retirado,
                 engagement_min,frequency_pct,notes
          FROM reinforcer_records WHERE patient_id=?1 ORDER BY category,item`,
-      ).bind(data.patientId).all<Record<string,unknown>>(),
+      ).bind(data.patientId).all<ReinforcerRecordItem>(),
       db.prepare(
         `SELECT id,category,topography,frequency,intensity,context,
                 interferes_teaching,probable_function,notes
          FROM stereotypy_records WHERE patient_id=?1 ORDER BY category`,
-      ).bind(data.patientId).all<Record<string,unknown>>(),
+      ).bind(data.patientId).all<StereotypyRecordItem>(),
     ]);
-    return { reinforcers: reinforcers.results, stereotypies: stereotypies.results };
+    return { reinforcers: reinforcers.results || [], stereotypies: stereotypies.results || [] };
   });
 
 const ReinforcerInput = z.object({

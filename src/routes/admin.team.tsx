@@ -3,7 +3,6 @@ import { requireRole } from "@/lib/route-guard";
 import { useState, useEffect } from "react";
 import { AppLayout, PageHeader } from "@/components/app-layout";
 import { getClinicTeam, createTeamMember, type TeamMemberItem } from "@/queries/team";
-import { teamCertifications } from "@/lib/mock-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -257,22 +256,26 @@ function TeamPage() {
       <Card className="mt-6">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <Award className="size-4 text-primary" /> Certificações vigentes
+            <Award className="size-4 text-primary" /> Registros e Habilitações Vigentes
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="divide-y divide-border">
-            {teamCertifications.map((c) => (
-              <div key={c.cert} className="px-5 py-3 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{c.cert}</p>
-                  <p className="text-xs text-muted-foreground truncate">{c.member}</p>
+            {team.filter((m) => m.registry).length === 0 ? (
+              <p className="px-5 py-4 text-xs text-muted-foreground italic">Nenhum registro profissional cadastrado no momento.</p>
+            ) : (
+              team.filter((m) => m.registry).map((m) => (
+                <div key={m.id} className="px-5 py-3 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{m.role === "admin" ? "Supervisão Técnica" : "Terapeuta ABA"} ({m.registry})</p>
+                    <p className="text-xs text-muted-foreground truncate">{m.name}</p>
+                  </div>
+                  <Badge variant="secondary" className="shrink-0 text-[10px]">
+                    {m.status}
+                  </Badge>
                 </div>
-                <Badge variant="secondary" className="shrink-0 text-[10px]">
-                  válida até {c.validity}
-                </Badge>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </CardContent>
       </Card>

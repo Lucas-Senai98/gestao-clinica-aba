@@ -82,7 +82,15 @@ export const getFinancialReport = createServerFn({ method: "GET" })
         sessions_count: number;
       }>();
 
-    const patientBreakdown: PatientBillingItem[] = patientBillingRows.results.map((row) => ({
+    const patientBreakdown: PatientBillingItem[] = patientBillingRows.results.map((row: {
+      patient_id: string;
+      patient_name: string;
+      diagnosis: string;
+      rate_value: number;
+      billing_type: "particular" | "convenio";
+      insurance_name: string | null;
+      sessions_count: number;
+    }) => ({
       patientId: row.patient_id,
       patientName: row.patient_name,
       diagnosis: row.diagnosis,
@@ -120,7 +128,13 @@ export const getFinancialReport = createServerFn({ method: "GET" })
         total_minutes: number;
       }>();
 
-    const therapistBreakdown: TherapistPayoutItem[] = therapistPayoutRows.results.map((row) => {
+    const therapistBreakdown: TherapistPayoutItem[] = therapistPayoutRows.results.map((row: {
+      therapist_id: string;
+      therapist_name: string;
+      hourly_rate: number;
+      total_sessions: number;
+      total_minutes: number;
+    }) => {
       const totalMinutes = Number(row.total_minutes);
       const totalHours   = Math.round((totalMinutes / 60) * 10) / 10;
       const hourlyRate   = Number(row.hourly_rate);
@@ -196,7 +210,14 @@ export const getTherapistPayout = createServerFn({ method: "GET" })
         patient_name: string;
       }>();
 
-    const sessionItems = sessions.results.map((s) => {
+    const sessionItems = sessions.results.map((s: {
+      id: string;
+      session_date: string;
+      start_time: string;
+      end_time: string;
+      duration_min: number;
+      patient_name: string;
+    }) => {
       const durationHours = Number(s.duration_min) / 60;
       const sessionEarnings = Math.round(durationHours * hourlyRate * 100) / 100;
       return {
@@ -210,9 +231,9 @@ export const getTherapistPayout = createServerFn({ method: "GET" })
       };
     });
 
-    const totalMinutes  = sessionItems.reduce((acc, item) => acc + item.durationMin, 0);
+    const totalMinutes  = sessionItems.reduce((acc: number, item: { durationMin: number }) => acc + item.durationMin, 0);
     const totalHours    = Math.round((totalMinutes / 60) * 10) / 10;
-    const totalEarnings = sessionItems.reduce((acc, item) => acc + item.sessionEarnings, 0);
+    const totalEarnings = sessionItems.reduce((acc: number, item: { sessionEarnings: number }) => acc + item.sessionEarnings, 0);
 
     return {
       targetMonth,

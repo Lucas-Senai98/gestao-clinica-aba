@@ -9,7 +9,6 @@ import {
   getThreadReplies,
   sendThreadReply,
 } from "@/queries/communication";
-import { forumThreads as mockThreads } from "@/lib/mock-data";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -83,42 +82,13 @@ function ForumPage() {
     setLoadingThreads(true);
     getForumThreads({ data: {} })
       .then((res) => {
-        if (res && res.length > 0) {
-          setThreads(res);
-          if (!activeThreadId) setActiveThreadId(res[0].id);
-        } else {
-          // Fallback para mock se o banco D1 não tiver tópicos criados ainda
-          const fallbackThreads: ThreadItem[] = mockThreads.map((m) => ({
-            id: m.id,
-            title: m.title,
-            preview: m.preview,
-            is_pinned: m.pinned ? 1 : 0,
-            created_at: m.lastActivity,
-            patient_id: m.patientId || null,
-            patient_name: m.patientName || null,
-            author_name: m.author,
-            author_avatar: m.author.slice(0, 2).toUpperCase(),
-            replies_count: m.repliesCount,
-          }));
-          setThreads(fallbackThreads);
-          if (!activeThreadId) setActiveThreadId(fallbackThreads[0].id);
+        setThreads(res || []);
+        if (res && res.length > 0 && !activeThreadId) {
+          setActiveThreadId(res[0].id);
         }
       })
       .catch(() => {
-        const fallbackThreads: ThreadItem[] = mockThreads.map((m) => ({
-          id: m.id,
-          title: m.title,
-          preview: m.preview,
-          is_pinned: m.pinned ? 1 : 0,
-          created_at: m.lastActivity,
-          patient_id: m.patientId || null,
-          patient_name: m.patientName || null,
-          author_name: m.author,
-          author_avatar: m.author.slice(0, 2).toUpperCase(),
-          replies_count: m.repliesCount,
-        }));
-        setThreads(fallbackThreads);
-        if (!activeThreadId) setActiveThreadId(fallbackThreads[0].id);
+        setThreads([]);
       })
       .finally(() => setLoadingThreads(false));
   };
@@ -268,22 +238,27 @@ function ForumPage() {
               Tópicos de Discussão ({threads.length})
             </h2>
 
-            {threads.map((t) => {
-              const isSelected = t.id === activeThreadId;
+            {threads.length === 0 ? (
+              <Card className="p-6 text-center border-dashed">
+                <p className="text-xs text-muted-foreground">Nenhum tópico criado no fórum ainda.</p>
+              </Card>
+            ) : (
+              threads.map((t) => {
+                const isSelected = t.id === activeThreadId;
 
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => setActiveThreadId(t.id)}
-                  className={cn(
-                    "w-full text-left p-3.5 rounded-xl border transition-all select-none",
-                    isSelected
-                      ? "border-primary bg-primary-soft/50 shadow-xs"
-                      : "border-border bg-card hover:bg-muted/50",
-                  )}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-semibold text-sm line-clamp-1">{t.title}</h3>
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setActiveThreadId(t.id)}
+                    className={cn(
+                      "w-full text-left p-3.5 rounded-xl border transition-all select-none",
+                      isSelected
+                        ? "border-primary bg-primary-soft/50 shadow-xs"
+                        : "border-border bg-card hover:bg-muted/50",
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="font-semibold text-sm line-clamp-1">{t.title}</h3>
                     {t.is_pinned === 1 && (
                       <Pin className="size-3.5 text-primary shrink-0 rotate-45" />
                     )}
@@ -319,7 +294,7 @@ function ForumPage() {
                   </div>
                 </button>
               );
-            })}
+            }))}
           </div>
 
           {/* ── COLUNA DIREITA: CONVERSA / THREAD SELECIONADA ─────────────────── */}

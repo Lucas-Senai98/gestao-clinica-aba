@@ -81,7 +81,7 @@ export const getPatientAnalytics = createServerFn({ method: "GET" })
     // Agrupa desempenho por data e programa
     const performanceByDate: Record<string, Record<string, number[]>> = {};
 
-    targetRows.results.forEach((row) => {
+    targetRows.results.forEach((row: { session_date: string; target_name: string; trials: number; correct: number }) => {
       availableTargetsSet.add(row.target_name);
       if (!performanceByDate[row.session_date]) {
         performanceByDate[row.session_date] = {};
@@ -130,7 +130,12 @@ export const getPatientAnalytics = createServerFn({ method: "GET" })
         inappropriate: number;
       }>();
 
-    const yesNoData: YesNoPoint[] = dailyRows.results.map((row) => {
+    const yesNoData: YesNoPoint[] = dailyRows.results.map((row: {
+      session_date: string;
+      cooperation: number;
+      attention: number;
+      inappropriate: number;
+    }) => {
       const [, m, d] = row.session_date.split("-");
       // Resposta positiva (Sim): Cooperação = 1, Atenção = 1, Respostas Inadequadas = 0
       const simCount = (row.cooperation === 1 ? 1 : 0) +
@@ -169,7 +174,11 @@ export const getPatientAnalytics = createServerFn({ method: "GET" })
 
     const behaviorByDate: Record<string, { Leve: number; Moderada: number; Intensa: number }> = {};
 
-    behaviorRows.results.forEach((row) => {
+    behaviorRows.results.forEach((row: {
+      session_date: string;
+      intensity: "Leve" | "Moderada" | "Intensa";
+      duration_min: number;
+    }) => {
       if (!behaviorByDate[row.session_date]) {
         behaviorByDate[row.session_date] = { Leve: 0, Moderada: 0, Intensa: 0 };
       }
@@ -258,7 +267,7 @@ export const getAdminDashboardStats = createServerFn({ method: "GET" }).handler(
       )
       .all<{ session_date: string; avg_performance: number }>();
 
-    const monthlyPerformance = perfRes.results.map((r) => {
+    const monthlyPerformance = perfRes.results.map((r: { session_date: string; avg_performance: number }) => {
       const parts = r.session_date.split("-");
       return {
         day: parts.length === 3 ? `${parts[2]}/${parts[1]}` : r.session_date,
@@ -272,13 +281,7 @@ export const getAdminDashboardStats = createServerFn({ method: "GET" }).handler(
       weeklySessionsCount: sessionsRes?.total ?? 0,
       pendingApprovalsCount: approvalsRes?.total ?? 0,
       recentPatients: recentPatientsRes.results ?? [],
-      monthlyPerformance: monthlyPerformance.length > 0 ? monthlyPerformance : [
-        { day: "Dia 01", desempenho: 70 },
-        { day: "Dia 05", desempenho: 75 },
-        { day: "Dia 10", desempenho: 80 },
-        { day: "Dia 15", desempenho: 82 },
-        { day: "Dia 20", desempenho: 88 },
-      ],
+      monthlyPerformance,
     };
   },
 );

@@ -76,7 +76,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 
 // ── Rota raiz ─────────────────────────────────────────────────────────────────
 
-export const Route = createRootRouteWithContext<RouterContext>()(({
+export const Route = createRootRouteWithContext<RouterContext>()({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -123,7 +123,7 @@ export const Route = createRootRouteWithContext<RouterContext>()(({
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
   errorComponent: ErrorComponent,
-} as Parameters<typeof createRootRouteWithContext<RouterContext>>[0]));
+});
 
 function RootShell({ children }: { children: React.ReactNode }) {
   return (

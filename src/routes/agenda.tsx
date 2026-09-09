@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { requireAuth, requireRole } from "@/lib/route-guard";
-import { useState } from "react";
+import { requireAuth } from "@/lib/route-guard";
+import { useState, useEffect } from "react";
 import { AppLayout, PageHeader } from "@/components/app-layout";
-import { appointments, weekDays } from "@/lib/mock-data";
+import { getAppointments, type AppointmentItem } from "@/queries/appointments";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Clock, MapPin, Play } from "lucide-react";
+import { Clock, MapPin, Play, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/agenda")({
@@ -38,8 +38,27 @@ const statusTone: Record<string, string> = {
   Cancelada: "bg-destructive/15 text-destructive",
 };
 
+const weekDays = [
+  "Segunda",
+  "Terça",
+  "Quarta",
+  "Quinta",
+  "Sexta",
+  "Sábado",
+];
+
 function Agenda() {
-  const [day, setDay] = useState(2);
+  const [day, setDay] = useState(0);
+  const [appointmentsList, setAppointmentsList] = useState<AppointmentItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    getAppointments({ data: {} })
+      .then((data) => setAppointmentsList(data || []))
+      .catch(() => setAppointmentsList([]))
+      .finally(() => setLoading(false));
+  }, []);
 
   return (
     <AppLayout>
@@ -65,35 +84,47 @@ function Agenda() {
         ))}
       </div>
 
-      <div className="space-y-2">
-        {appointments.map((a) => (
-          <Card key={a.id} className="hover:shadow-md transition-shadow">
-            <CardContent className="p-4 flex flex-wrap items-center gap-3">
-              <div className="w-16 shrink-0">
-                <p className="text-lg font-semibold leading-none">{a.time}</p>
-                <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
-                  <Clock className="size-3" /> 50min
-                </p>
-              </div>
-              <div className="flex-1 min-w-[160px]">
-                <p className="font-medium text-sm">{a.patient}</p>
-                <p className="text-xs text-muted-foreground">
-                  {a.type} · {a.therapist}
-                </p>
-              </div>
-              <div className="text-xs text-muted-foreground flex items-center gap-1">
-                <MapPin className="size-3.5" /> {a.room}
-              </div>
-              <Badge className={cn("border-0", statusTone[a.status])}>{a.status}</Badge>
-              <Button asChild size="sm" variant="outline">
-                <Link to="/session/$patientId" params={{ patientId: "p1" }}>
-                  <Play className="size-3.5" /> Registro
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {loading ? (
+        <Card className="p-8 text-center">
+          <Loader2 className="size-6 animate-spin mx-auto text-primary" />
+          <p className="text-sm text-muted-foreground mt-2">Carregando agendamentos...</p>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {appointmentsList.map((a) => (
+            <Card key={a.id} className="hover:shadow-md transition-shadow">
+              <CardContent className="p-4 flex flex-wrap items-center gap-3">
+                <div className="w-16 shrink-0">
+                  <p className="text-lg font-semibold leading-none">{a.time}</p>
+                  <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
+                    <Clock className="size-3" /> {a.duration}
+                  </p>
+                </div>
+                <div className="flex-1 min-w-[160px]">
+                  <p className="font-medium text-sm">{a.patient}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {a.type} · {a.therapist}
+                  </p>
+                </div>
+                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                  <MapPin className="size-3.5" /> {a.room}
+                </div>
+                <Badge className={cn("border-0", statusTone[a.status] || "bg-muted")}>{a.status}</Badge>
+                <Button asChild size="sm" variant="outline">
+                  <Link to="/session/$patientId" params={{ patientId: a.patientId }}>
+                    <Play className="size-3.5" /> Registro
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+          {appointmentsList.length === 0 && (
+            <Card className="p-8 text-center border-dashed">
+              <p className="text-sm text-muted-foreground">Nenhum atendimento agendado para o período.</p>
+            </Card>
+          )}
+        </div>
+      )}
     </AppLayout>
   );
 }
