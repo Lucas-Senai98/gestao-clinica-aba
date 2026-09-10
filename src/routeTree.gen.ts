@@ -9,59 +9,34 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AdminRouteImport } from './routes/admin'
-import { Route as AgendaRouteImport } from './routes/agenda'
-import { Route as ForumRouteImport } from './routes/forum'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as NotificationsRouteImport } from './routes/notifications'
-import { Route as ParentRouteImport } from './routes/parent'
 import { Route as ReportsRouteImport } from './routes/reports'
-import { Route as AdminIndexRouteImport } from './routes/admin.index'
-import { Route as AdminApprovalsRouteImport } from './routes/admin.approvals'
-import { Route as AdminAuditRouteImport } from './routes/admin.audit'
-import { Route as AdminFinancialRouteImport } from './routes/admin.financial'
-import { Route as AdminHoursRouteImport } from './routes/admin.hours'
-import { Route as AdminTeamRouteImport } from './routes/admin.team'
-import { Route as EvolutionPatientIdRouteImport } from './routes/evolution.$patientId'
-import { Route as ParentAgendaRouteImport } from './routes/parent.agenda'
-import { Route as PatientPatientIdRouteImport } from './routes/patient.$patientId'
+import { Route as ParentRouteImport } from './routes/parent'
+import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as ForumRouteImport } from './routes/forum'
+import { Route as AgendaRouteImport } from './routes/agenda'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as PatientsIndexRouteImport } from './routes/patients.index'
-import { Route as PatientsPatientIdRouteImport } from './routes/patients.$patientId'
-import { Route as PatientsNewRouteImport } from './routes/patients.new'
-import { Route as PeiPatientIdRouteImport } from './routes/pei.$patientId'
-import { Route as SessionPatientIdRouteImport } from './routes/session.$patientId'
+import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as TherapistPayoutRouteImport } from './routes/therapist.payout'
+import { Route as SessionPatientIdRouteImport } from './routes/session.$patientId'
+import { Route as PeiPatientIdRouteImport } from './routes/pei.$patientId'
+import { Route as PatientsNewRouteImport } from './routes/patients.new'
+import { Route as PatientsPatientIdRouteImport } from './routes/patients.$patientId'
+import { Route as PatientPatientIdRouteImport } from './routes/patient.$patientId'
+import { Route as ParentAgendaRouteImport } from './routes/parent.agenda'
+import { Route as EvolutionPatientIdRouteImport } from './routes/evolution.$patientId'
+import { Route as AdminTeamRouteImport } from './routes/admin.team'
+import { Route as AdminHoursRouteImport } from './routes/admin.hours'
+import { Route as AdminFinancialRouteImport } from './routes/admin.financial'
+import { Route as AdminAuditRouteImport } from './routes/admin.audit'
+import { Route as AdminApprovalsRouteImport } from './routes/admin.approvals'
 import { Route as PatientsPatientIdPrintReportRouteImport } from './routes/patients.$patientId.print-report'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AgendaRoute = AgendaRouteImport.update({
-  id: '/agenda',
-  path: '/agenda',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ForumRoute = ForumRouteImport.update({
-  id: '/forum',
-  path: '/forum',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const NotificationsRoute = NotificationsRouteImport.update({
-  id: '/notifications',
-  path: '/notifications',
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ParentRoute = ParentRouteImport.update({
@@ -69,54 +44,34 @@ const ParentRoute = ParentRouteImport.update({
   path: '/parent',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ReportsRoute = ReportsRouteImport.update({
-  id: '/reports',
-  path: '/reports',
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminIndexRoute = AdminIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminApprovalsRoute = AdminApprovalsRouteImport.update({
-  id: '/approvals',
-  path: '/approvals',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminAuditRoute = AdminAuditRouteImport.update({
-  id: '/audit',
-  path: '/audit',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminFinancialRoute = AdminFinancialRouteImport.update({
-  id: '/financial',
-  path: '/financial',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminHoursRoute = AdminHoursRouteImport.update({
-  id: '/hours',
-  path: '/hours',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminTeamRoute = AdminTeamRouteImport.update({
-  id: '/team',
-  path: '/team',
-  getParentRoute: () => AdminRoute,
-} as any)
-const EvolutionPatientIdRoute = EvolutionPatientIdRouteImport.update({
-  id: '/evolution/$patientId',
-  path: '/evolution/$patientId',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ParentAgendaRoute = ParentAgendaRouteImport.update({
+const ForumRoute = ForumRouteImport.update({
+  id: '/forum',
+  path: '/forum',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgendaRoute = AgendaRouteImport.update({
   id: '/agenda',
   path: '/agenda',
-  getParentRoute: () => ParentRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-const PatientPatientIdRoute = PatientPatientIdRouteImport.update({
-  id: '/patient/$patientId',
-  path: '/patient/$patientId',
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PatientsIndexRoute = PatientsIndexRouteImport.update({
@@ -124,19 +79,14 @@ const PatientsIndexRoute = PatientsIndexRouteImport.update({
   path: '/patients/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PatientsPatientIdRoute = PatientsPatientIdRouteImport.update({
-  id: '/patients/$patientId',
-  path: '/patients/$patientId',
-  getParentRoute: () => rootRouteImport,
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminRoute,
 } as any)
-const PatientsNewRoute = PatientsNewRouteImport.update({
-  id: '/patients/new',
-  path: '/patients/new',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PeiPatientIdRoute = PeiPatientIdRouteImport.update({
-  id: '/pei/$patientId',
-  path: '/pei/$patientId',
+const TherapistPayoutRoute = TherapistPayoutRouteImport.update({
+  id: '/therapist/payout',
+  path: '/therapist/payout',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SessionPatientIdRoute = SessionPatientIdRouteImport.update({
@@ -144,10 +94,60 @@ const SessionPatientIdRoute = SessionPatientIdRouteImport.update({
   path: '/session/$patientId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TherapistPayoutRoute = TherapistPayoutRouteImport.update({
-  id: '/therapist/payout',
-  path: '/therapist/payout',
+const PeiPatientIdRoute = PeiPatientIdRouteImport.update({
+  id: '/pei/$patientId',
+  path: '/pei/$patientId',
   getParentRoute: () => rootRouteImport,
+} as any)
+const PatientsNewRoute = PatientsNewRouteImport.update({
+  id: '/patients/new',
+  path: '/patients/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PatientsPatientIdRoute = PatientsPatientIdRouteImport.update({
+  id: '/patients/$patientId',
+  path: '/patients/$patientId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PatientPatientIdRoute = PatientPatientIdRouteImport.update({
+  id: '/patient/$patientId',
+  path: '/patient/$patientId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ParentAgendaRoute = ParentAgendaRouteImport.update({
+  id: '/agenda',
+  path: '/agenda',
+  getParentRoute: () => ParentRoute,
+} as any)
+const EvolutionPatientIdRoute = EvolutionPatientIdRouteImport.update({
+  id: '/evolution/$patientId',
+  path: '/evolution/$patientId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminTeamRoute = AdminTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminHoursRoute = AdminHoursRouteImport.update({
+  id: '/hours',
+  path: '/hours',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminFinancialRoute = AdminFinancialRouteImport.update({
+  id: '/financial',
+  path: '/financial',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminAuditRoute = AdminAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminApprovalsRoute = AdminApprovalsRouteImport.update({
+  id: '/approvals',
+  path: '/approvals',
+  getParentRoute: () => AdminRoute,
 } as any)
 const PatientsPatientIdPrintReportRoute =
   PatientsPatientIdPrintReportRouteImport.update({
@@ -335,46 +335,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/agenda': {
-      id: '/agenda'
-      path: '/agenda'
-      fullPath: '/agenda'
-      preLoaderRoute: typeof AgendaRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/forum': {
-      id: '/forum'
-      path: '/forum'
-      fullPath: '/forum'
-      preLoaderRoute: typeof ForumRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/notifications': {
-      id: '/notifications'
-      path: '/notifications'
-      fullPath: '/notifications'
-      preLoaderRoute: typeof NotificationsRouteImport
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/parent': {
@@ -384,74 +349,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ParentRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/reports': {
-      id: '/reports'
-      path: '/reports'
-      fullPath: '/reports'
-      preLoaderRoute: typeof ReportsRouteImport
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/': {
-      id: '/admin/'
-      path: '/'
-      fullPath: '/admin/'
-      preLoaderRoute: typeof AdminIndexRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/approvals': {
-      id: '/admin/approvals'
-      path: '/approvals'
-      fullPath: '/admin/approvals'
-      preLoaderRoute: typeof AdminApprovalsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/audit': {
-      id: '/admin/audit'
-      path: '/audit'
-      fullPath: '/admin/audit'
-      preLoaderRoute: typeof AdminAuditRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/financial': {
-      id: '/admin/financial'
-      path: '/financial'
-      fullPath: '/admin/financial'
-      preLoaderRoute: typeof AdminFinancialRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/hours': {
-      id: '/admin/hours'
-      path: '/hours'
-      fullPath: '/admin/hours'
-      preLoaderRoute: typeof AdminHoursRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/team': {
-      id: '/admin/team'
-      path: '/team'
-      fullPath: '/admin/team'
-      preLoaderRoute: typeof AdminTeamRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/evolution/$patientId': {
-      id: '/evolution/$patientId'
-      path: '/evolution/$patientId'
-      fullPath: '/evolution/$patientId'
-      preLoaderRoute: typeof EvolutionPatientIdRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/parent/agenda': {
-      id: '/parent/agenda'
+    '/forum': {
+      id: '/forum'
+      path: '/forum'
+      fullPath: '/forum'
+      preLoaderRoute: typeof ForumRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agenda': {
+      id: '/agenda'
       path: '/agenda'
-      fullPath: '/parent/agenda'
-      preLoaderRoute: typeof ParentAgendaRouteImport
-      parentRoute: typeof ParentRoute
+      fullPath: '/agenda'
+      preLoaderRoute: typeof AgendaRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/patient/$patientId': {
-      id: '/patient/$patientId'
-      path: '/patient/$patientId'
-      fullPath: '/patient/$patientId'
-      preLoaderRoute: typeof PatientPatientIdRouteImport
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/patients/': {
@@ -461,25 +398,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PatientsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/patients/$patientId': {
-      id: '/patients/$patientId'
-      path: '/patients/$patientId'
-      fullPath: '/patients/$patientId'
-      preLoaderRoute: typeof PatientsPatientIdRouteImport
-      parentRoute: typeof rootRouteImport
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRoute
     }
-    '/patients/new': {
-      id: '/patients/new'
-      path: '/patients/new'
-      fullPath: '/patients/new'
-      preLoaderRoute: typeof PatientsNewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/pei/$patientId': {
-      id: '/pei/$patientId'
-      path: '/pei/$patientId'
-      fullPath: '/pei/$patientId'
-      preLoaderRoute: typeof PeiPatientIdRouteImport
+    '/therapist/payout': {
+      id: '/therapist/payout'
+      path: '/therapist/payout'
+      fullPath: '/therapist/payout'
+      preLoaderRoute: typeof TherapistPayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/session/$patientId': {
@@ -489,12 +419,82 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SessionPatientIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/therapist/payout': {
-      id: '/therapist/payout'
-      path: '/therapist/payout'
-      fullPath: '/therapist/payout'
-      preLoaderRoute: typeof TherapistPayoutRouteImport
+    '/pei/$patientId': {
+      id: '/pei/$patientId'
+      path: '/pei/$patientId'
+      fullPath: '/pei/$patientId'
+      preLoaderRoute: typeof PeiPatientIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/patients/new': {
+      id: '/patients/new'
+      path: '/patients/new'
+      fullPath: '/patients/new'
+      preLoaderRoute: typeof PatientsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/patients/$patientId': {
+      id: '/patients/$patientId'
+      path: '/patients/$patientId'
+      fullPath: '/patients/$patientId'
+      preLoaderRoute: typeof PatientsPatientIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/patient/$patientId': {
+      id: '/patient/$patientId'
+      path: '/patient/$patientId'
+      fullPath: '/patient/$patientId'
+      preLoaderRoute: typeof PatientPatientIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/parent/agenda': {
+      id: '/parent/agenda'
+      path: '/agenda'
+      fullPath: '/parent/agenda'
+      preLoaderRoute: typeof ParentAgendaRouteImport
+      parentRoute: typeof ParentRoute
+    }
+    '/evolution/$patientId': {
+      id: '/evolution/$patientId'
+      path: '/evolution/$patientId'
+      fullPath: '/evolution/$patientId'
+      preLoaderRoute: typeof EvolutionPatientIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/team': {
+      id: '/admin/team'
+      path: '/team'
+      fullPath: '/admin/team'
+      preLoaderRoute: typeof AdminTeamRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/hours': {
+      id: '/admin/hours'
+      path: '/hours'
+      fullPath: '/admin/hours'
+      preLoaderRoute: typeof AdminHoursRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/financial': {
+      id: '/admin/financial'
+      path: '/financial'
+      fullPath: '/admin/financial'
+      preLoaderRoute: typeof AdminFinancialRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/audit': {
+      id: '/admin/audit'
+      path: '/audit'
+      fullPath: '/admin/audit'
+      preLoaderRoute: typeof AdminAuditRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/approvals': {
+      id: '/admin/approvals'
+      path: '/approvals'
+      fullPath: '/admin/approvals'
+      preLoaderRoute: typeof AdminApprovalsRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/patients/$patientId/print-report': {
       id: '/patients/$patientId/print-report'

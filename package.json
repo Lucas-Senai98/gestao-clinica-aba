@@ -13,7 +13,8 @@
     "db:setup": "node scripts/setup-db.mjs",
     "db:migrate:local": "npx wrangler d1 execute gestao-clinica-gizes --local --file=migrations/0000_init.sql",
     "db:seed:local": "npx wrangler d1 execute gestao-clinica-gizes --local --file=migrations/0001_seed_dev.sql",
-    "db:migrate:remote": "npx wrangler d1 execute gestao-clinica-gizes --remote --file=migrations/0000_init.sql"
+    "db:migrate:remote": "npx wrangler d1 execute gestao-clinica-gizes --remote --file=migrations/0000_init.sql",
+    "postinstall": "node scripts/patch-tanstack.mjs"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.25.5",
