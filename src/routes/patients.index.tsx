@@ -3,7 +3,7 @@ import { requireAuth } from "@/lib/route-guard";
 import { useState, useEffect } from "react";
 import { useCurrentUser } from "@/lib/auth-context";
 import { AppLayout, PageHeader } from "@/components/app-layout";
-import { getPatients } from "@/queries/patients";
+import { archivePatient, deletePatient, getPatients } from "@/queries/patients";
 import type { PatientSummary } from "@/db/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Search, ChevronRight, LineChart, UserPlus, Pencil, Loader2 } from "lucide-react";
+import { Search, ChevronRight, LineChart, UserPlus, Pencil, Loader2, Archive, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/patients/")({
   beforeLoad: requireAuth(),
@@ -41,7 +42,7 @@ function PatientsList() {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
 
-  useEffect(() => {
+  const load = () => {
     let unmounted = false;
     setLoading(true);
 
@@ -64,7 +65,23 @@ function PatientsList() {
     return () => {
       unmounted = true;
     };
-  }, [currentUser]);
+  };
+
+  useEffect(() => load(), [currentUser]);
+
+  const archive = async (id: string) => {
+    if (!confirm("Arquivar/desativar este paciente? Ele ficará como Pausado.")) return;
+    await archivePatient({ data: { id, status: "Pausado" } });
+    toast.success("Paciente arquivado.");
+    load();
+  };
+
+  const remove = async (id: string) => {
+    if (!confirm("Excluir este paciente definitivamente? Esta ação remove dados relacionados pelo banco.")) return;
+    await deletePatient({ data: { id } });
+    toast.success("Paciente excluído.");
+    load();
+  };
 
   const list = patients.filter((p) =>
     `${p.name} ${p.diagnosis || ""} ${p.guardian || ""}`.toLowerCase().includes(q.toLowerCase())
@@ -139,6 +156,16 @@ function PatientsList() {
                       Prontuário <ChevronRight className="size-3.5" />
                     </Link>
                   </Button>
+                  {currentUser?.role === "admin" && (
+                    <>
+                      <Button size="sm" variant="ghost" onClick={() => archive(p.id)}>
+                        <Archive className="size-3.5" />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => remove(p.id)}>
+                        <Trash2 className="size-3.5 text-destructive" />
+                      </Button>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>

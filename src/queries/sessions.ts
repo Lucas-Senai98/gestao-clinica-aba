@@ -27,6 +27,7 @@ const BehaviorInput = z.object({
 });
 
 const SaveDailyRecordInput = z.object({
+  recordId: z.string().optional(),
   patientId:    z.string().min(1),
   sessionDate:  z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida (YYYY-MM-DD)"),
   sessionTime:  z.string().optional(),
@@ -90,44 +91,84 @@ export const saveDailyRecord = createServerFn({ method: "POST" })
     // admin pode registrar para qualquer paciente
 
     // ── 3. Prepara IDs ───────────────────────────────────────────────────────
-    const recordId = generateId();
+    const recordId = data.recordId ?? generateId();
 
     // ── 4. Monta statements para D1 batch ────────────────────────────────────
 
     const statements: D1PreparedStatement[] = [];
 
-    // 4a. Registro principal da sessão
-    statements.push(
-      db
-        .prepare(
-          `INSERT INTO daily_records
-             (id, patient_id, therapist_id, session_date, session_time, duration_min,
-              cooperation, attention, inappropriate,
-              transitions, eye_contact, communication,
-              reinforcers_used, general_notes, status)
-           VALUES
-             (?1, ?2, ?3, ?4, ?5, ?6,
-              ?7, ?8, ?9,
-              ?10, ?11, ?12,
-              ?13, ?14, 'submitted')`,
-        )
-        .bind(
-          recordId,
-          data.patientId,
-          user.id,
-          data.sessionDate,
-          data.sessionTime ?? null,
-          data.durationMin ?? null,
-          data.cooperation   ? 1 : 0,
-          data.attention     ? 1 : 0,
-          data.inappropriate ? 1 : 0,
-          data.transitions,
-          data.eyeContact,
-          data.communication,
-          data.reinforcersUsed ?? null,
-          data.generalNotes    ?? null,
-        ),
-    );
+    if (data.recordId) {
+      const existing = await db
+        .prepare(`SELECT patient_id, therapist_id FROM daily_records WHERE id = ?1`)
+        .bind(recordId)
+        .first<{ patient_id: string; therapist_id: string }>();
+      if (!existing) throw new Error("Registro de sessão não encontrado.");
+      if (user.role === "therapist" && existing.therapist_id !== user.id) {
+        throw new Error("Acesso negado: apenas o terapeuta autor pode editar esta sessão.");
+      }
+
+      statements.push(
+        db.prepare(`DELETE FROM target_records WHERE daily_record_id = ?1`).bind(recordId),
+        db.prepare(`DELETE FROM behavior_records WHERE daily_record_id = ?1`).bind(recordId),
+        db
+          .prepare(
+            `UPDATE daily_records SET
+               session_date = ?1, session_time = ?2, duration_min = ?3,
+               cooperation = ?4, attention = ?5, inappropriate = ?6,
+               transitions = ?7, eye_contact = ?8, communication = ?9,
+               reinforcers_used = ?10, general_notes = ?11,
+               cancelled_at = NULL, cancel_reason = NULL,
+               updated_at = datetime('now')
+             WHERE id = ?12`,
+          )
+          .bind(
+            data.sessionDate,
+            data.sessionTime ?? null,
+            data.durationMin ?? null,
+            data.cooperation ? 1 : 0,
+            data.attention ? 1 : 0,
+            data.inappropriate ? 1 : 0,
+            data.transitions,
+            data.eyeContact,
+            data.communication,
+            data.reinforcersUsed ?? null,
+            data.generalNotes ?? null,
+            recordId,
+          ),
+      );
+    } else {
+      statements.push(
+        db
+          .prepare(
+            `INSERT INTO daily_records
+               (id, patient_id, therapist_id, session_date, session_time, duration_min,
+                cooperation, attention, inappropriate,
+                transitions, eye_contact, communication,
+                reinforcers_used, general_notes, status)
+             VALUES
+               (?1, ?2, ?3, ?4, ?5, ?6,
+                ?7, ?8, ?9,
+                ?10, ?11, ?12,
+                ?13, ?14, 'submitted')`,
+          )
+          .bind(
+            recordId,
+            data.patientId,
+            user.id,
+            data.sessionDate,
+            data.sessionTime ?? null,
+            data.durationMin ?? null,
+            data.cooperation ? 1 : 0,
+            data.attention ? 1 : 0,
+            data.inappropriate ? 1 : 0,
+            data.transitions,
+            data.eyeContact,
+            data.communication,
+            data.reinforcersUsed ?? null,
+            data.generalNotes ?? null,
+          ),
+      );
+    }
 
     // 4b. Programas de ensino (target_records)
     data.targets.forEach((t, idx) => {
@@ -181,6 +222,8 @@ export const saveDailyRecord = createServerFn({ method: "POST" })
 
     // ── 5. Executa em lote (atômico no D1) ───────────────────────────────────
     await db.batch(statements);
+    const { logAuditEvent } = await import("@/queries/notifications_audit");
+    await logAuditEvent(user.id, data.recordId ? "UPDATE_SESSION" : "CREATE_SESSION", "daily_records", data.patientId);
 
     return {
       recordId,
@@ -207,6 +250,7 @@ export const getSessionRecords = createServerFn({ method: "GET" })
       .prepare(
         `SELECT
            dr.id, dr.session_date, dr.session_time, dr.duration_min,
+           dr.cancelled_at, dr.cancel_reason,
            dr.status, u.name AS therapist_name,
            COUNT(DISTINCT tr.id) AS targets_count,
            COUNT(DISTINCT br.id) AS behaviors_count,
@@ -227,6 +271,8 @@ export const getSessionRecords = createServerFn({ method: "GET" })
         session_time: string | null;
         duration_min: number | null;
         status: string;
+        cancelled_at: string | null;
+        cancel_reason: string | null;
         therapist_name: string;
         targets_count: number;
         behaviors_count: number;
@@ -234,4 +280,104 @@ export const getSessionRecords = createServerFn({ method: "GET" })
       }>();
 
     return records.results;
+  });
+
+export const getSessionRecordDetail = createServerFn({ method: "GET" })
+  .validator(z.object({ recordId: z.string() }))
+  .handler(async ({ data }) => {
+    const user = await getSessionUser();
+    if (!user) throw new Error("Sessão expirada.");
+
+    const db = getDB();
+    const record = await db
+      .prepare(
+        `SELECT
+           dr.*, p.name AS patient_name, u.name AS therapist_name
+         FROM daily_records dr
+         JOIN patients p ON p.id = dr.patient_id
+         JOIN users u ON u.id = dr.therapist_id
+         WHERE dr.id = ?1`,
+      )
+      .bind(data.recordId)
+      .first<Record<string, unknown>>();
+    if (!record) throw new Error("Registro não encontrado.");
+
+    const [targets, behaviors] = await Promise.all([
+      db
+        .prepare(
+          `SELECT id, target_name, trials, correct, notes, sort_order
+           FROM target_records
+           WHERE daily_record_id = ?1
+           ORDER BY sort_order ASC`,
+        )
+        .bind(data.recordId)
+        .all<Record<string, unknown>>(),
+      db
+        .prepare(
+          `SELECT id, topography, duration_min, intensity, context, notes
+           FROM behavior_records
+           WHERE daily_record_id = ?1
+           ORDER BY created_at ASC`,
+        )
+        .bind(data.recordId)
+        .all<Record<string, unknown>>(),
+    ]);
+
+    return {
+      record,
+      targets: targets.results,
+      behaviors: behaviors.results,
+    };
+  });
+
+export const cancelSessionRecord = createServerFn({ method: "POST" })
+  .validator(z.object({ recordId: z.string(), reason: z.string().optional() }))
+  .handler(async ({ data }) => {
+    const user = await getSessionUser();
+    if (!user) throw new Error("Sessão expirada.");
+
+    const row = await getDB()
+      .prepare(`SELECT patient_id, therapist_id FROM daily_records WHERE id = ?1`)
+      .bind(data.recordId)
+      .first<{ patient_id: string; therapist_id: string }>();
+    if (!row) throw new Error("Registro não encontrado.");
+    if (user.role === "therapist" && row.therapist_id !== user.id) {
+      throw new Error("Acesso negado: apenas o terapeuta autor pode cancelar esta sessão.");
+    }
+
+    await getDB()
+      .prepare(
+        `UPDATE daily_records
+         SET cancelled_at = datetime('now'), cancel_reason = ?1, updated_at = datetime('now')
+         WHERE id = ?2`,
+      )
+      .bind(data.reason || "Cancelado pelo usuário", data.recordId)
+      .run();
+
+    const { logAuditEvent } = await import("@/queries/notifications_audit");
+    await logAuditEvent(user.id, "CANCEL_SESSION", "daily_records", row.patient_id);
+    return { ok: true };
+  });
+
+export const deleteSessionRecord = createServerFn({ method: "POST" })
+  .validator(z.object({ recordId: z.string() }))
+  .handler(async ({ data }) => {
+    const user = await getSessionUser();
+    if (!user) throw new Error("Sessão expirada.");
+    if (user.role !== "admin") throw new Error("Apenas supervisores podem excluir sessões definitivamente.");
+
+    const row = await getDB()
+      .prepare(`SELECT patient_id FROM daily_records WHERE id = ?1`)
+      .bind(data.recordId)
+      .first<{ patient_id: string }>();
+
+    await getDB().batch([
+      getDB().prepare(`DELETE FROM target_records WHERE daily_record_id = ?1`).bind(data.recordId),
+      getDB().prepare(`DELETE FROM behavior_records WHERE daily_record_id = ?1`).bind(data.recordId),
+      getDB().prepare(`DELETE FROM daily_records WHERE id = ?1`).bind(data.recordId),
+    ]);
+
+    const { logAuditEvent } = await import("@/queries/notifications_audit");
+    await logAuditEvent(user.id, "DELETE_SESSION", "daily_records", row?.patient_id);
+    return { ok: true };
   });

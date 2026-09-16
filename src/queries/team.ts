@@ -300,3 +300,132 @@ export const createTeamMember = createServerFn({ method: "POST" })
       password: data.password,
     };
   });
+
+const UpdateTeamMemberInput = z.object({
+  id: z.string(),
+  name: z.string().min(2),
+  email: z.string().email(),
+  registry: z.string().optional(),
+  role: z.enum(["therapist", "admin"]),
+});
+
+export const updateTeamMember = createServerFn({ method: "POST" })
+  .validator((d: unknown) => UpdateTeamMemberInput.parse(d))
+  .handler(async ({ data }) => {
+    const user = await getSessionUser();
+    if (!user || user.role !== "admin") {
+      throw new Error("Acesso negado: apenas supervisores podem editar membros.");
+    }
+
+    const cleanEmail = data.email.trim().toLowerCase();
+    const names = data.name.trim().split(/\s+/);
+    const avatar = names.length > 1
+      ? `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase()
+      : names[0].slice(0, 2).toUpperCase();
+
+    await getDB()
+      .prepare(
+        `UPDATE users
+         SET name = ?1, email = ?2, registry = ?3, role = ?4,
+             avatar_initials = ?5, updated_at = datetime('now')
+         WHERE id = ?6`,
+      )
+      .bind(data.name.trim(), cleanEmail, data.registry?.trim() || null, data.role, avatar, data.id)
+      .run();
+
+    const idx = DEV_TEAM_MEMBERS.findIndex((m) => m.id === data.id);
+    if (idx !== -1) {
+      DEV_TEAM_MEMBERS[idx] = {
+        ...DEV_TEAM_MEMBERS[idx],
+        name: data.name.trim(),
+        email: cleanEmail,
+        registry: data.registry?.trim() || null,
+        role: data.role,
+        avatar_initials: avatar,
+      };
+    }
+
+    await logAuditEvent(user.id, "UPDATE_USER", "users", null);
+    return { ok: true };
+  });
+
+export const setTeamMemberActive = createServerFn({ method: "POST" })
+  .validator(z.object({ id: z.string(), active: z.boolean() }))
+  .handler(async ({ data }) => {
+    const user = await getSessionUser();
+    if (!user || user.role !== "admin") {
+      throw new Error("Acesso negado: apenas supervisores podem alterar status.");
+    }
+    if (data.id === user.id && !data.active) {
+      throw new Error("Você não pode desativar sua própria conta.");
+    }
+
+    await getDB()
+      .prepare(`UPDATE users SET is_active = ?1, updated_at = datetime('now') WHERE id = ?2`)
+      .bind(data.active ? 1 : 0, data.id)
+      .run();
+
+    const idx = DEV_TEAM_MEMBERS.findIndex((m) => m.id === data.id);
+    if (idx !== -1) {
+      DEV_TEAM_MEMBERS[idx] = {
+        ...DEV_TEAM_MEMBERS[idx],
+        is_active: data.active ? 1 : 0,
+        status: data.active ? "Ativa" : "Inativo",
+      };
+    }
+
+    await logAuditEvent(user.id, data.active ? "ACTIVATE_USER" : "DEACTIVATE_USER", "users", null);
+    return { ok: true };
+  });
+
+export const resetTeamMemberPassword = createServerFn({ method: "POST" })
+  .validator(z.object({ id: z.string(), password: z.string().min(6) }))
+  .handler(async ({ data }) => {
+    const user = await getSessionUser();
+    if (!user || user.role !== "admin") {
+      throw new Error("Acesso negado: apenas supervisores podem redefinir senhas.");
+    }
+
+    const saltHex = generateSalt();
+    const hashHex = await pbkdf2Hash(data.password, saltHex);
+
+    try {
+      await getDB()
+        .prepare(
+          `UPDATE users
+           SET password_hash = ?1, password_salt = ?2,
+               change_password_required = 1, updated_at = datetime('now')
+           WHERE id = ?3`,
+        )
+        .bind(hashHex, saltHex, data.id)
+        .run();
+    } catch {
+      await getDB()
+        .prepare(
+          `UPDATE users
+           SET password_hash = ?1, password_salt = ?2, updated_at = datetime('now')
+           WHERE id = ?3`,
+        )
+        .bind(hashHex, saltHex, data.id)
+        .run();
+    }
+
+    const member = DEV_TEAM_MEMBERS.find((m) => m.id === data.id);
+    if (member) {
+      registerDevUser(
+        {
+          id: member.id,
+          email: member.email,
+          name: member.name,
+          role: member.role,
+          avatar_initials: member.avatar_initials || undefined,
+        },
+        data.password,
+        hashHex,
+        saltHex,
+      );
+    }
+
+    await logAuditEvent(user.id, "RESET_USER_PASSWORD", "users", null);
+    return { ok: true, password: data.password };
+  });

@@ -24,6 +24,11 @@ import {
   deleteReinforcerRecord,
   deleteStereotypyRecord,
 } from "@/queries/pep";
+import {
+  cancelSessionRecord,
+  deleteSessionRecord,
+  getSessionRecords,
+} from "@/queries/sessions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -67,6 +72,8 @@ import {
   Sparkles,
   AlertTriangle,
   HelpCircle,
+  Pencil,
+  Ban,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -185,6 +192,9 @@ function PatientPEP() {
           <TabsTrigger value="reinforcers" className="data-[state=active]:bg-background">
             Reforçadores & Autoestimulações
           </TabsTrigger>
+          <TabsTrigger value="sessions" className="data-[state=active]:bg-background">
+            Sessões
+          </TabsTrigger>
         </TabsList>
 
         {/* TAB 1: CHECKLIST ABA (8 PASSOS) */}
@@ -201,8 +211,140 @@ function PatientPEP() {
         <TabsContent value="reinforcers">
           <ReinforcersTab patientId={patient?.id || patientId} />
         </TabsContent>
+
+        <TabsContent value="sessions">
+          <SessionHistoryTab patientId={patient?.id || patientId} />
+        </TabsContent>
       </Tabs>
     </AppLayout>
+  );
+}
+
+function SessionHistoryTab({ patientId }: { patientId: string }) {
+  const currentUser = useCurrentUser();
+  const [loading, setLoading] = useState(true);
+  const [records, setRecords] = useState<
+    Array<{
+      id: string;
+      session_date: string;
+      session_time: string | null;
+      duration_min: number | null;
+      status: string;
+      cancelled_at?: string | null;
+      cancel_reason?: string | null;
+      therapist_name: string;
+      targets_count: number;
+      behaviors_count: number;
+      avg_performance: number | null;
+    }>
+  >([]);
+
+  const load = () => {
+    setLoading(true);
+    getSessionRecords({ data: { patientId } })
+      .then((res) => setRecords(res as any))
+      .catch(() => setRecords([]))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    load();
+  }, [patientId]);
+
+  const cancel = async (recordId: string) => {
+    const reason = prompt("Motivo do cancelamento:");
+    if (reason === null) return;
+    await cancelSessionRecord({ data: { recordId, reason } });
+    toast.success("Sessão cancelada com auditoria.");
+    load();
+  };
+
+  const remove = async (recordId: string) => {
+    if (!confirm("Excluir definitivamente esta sessão? Esta ação será auditada.")) return;
+    await deleteSessionRecord({ data: { recordId } });
+    toast.success("Sessão excluída.");
+    load();
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <FileText className="size-4 text-primary" /> Histórico de sessões
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        {loading ? (
+          <div className="py-10 text-center">
+            <Loader2 className="size-5 animate-spin mx-auto text-primary" />
+            <p className="text-xs text-muted-foreground mt-2">Carregando sessões...</p>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Data</TableHead>
+                <TableHead>Terapeuta</TableHead>
+                <TableHead className="text-right">Alvos</TableHead>
+                <TableHead className="text-right">Média</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {records.map((r) => {
+                const cancelled = Boolean(r.cancelled_at);
+                return (
+                  <TableRow key={r.id}>
+                    <TableCell>
+                      <p className="font-medium">{r.session_date}</p>
+                      <p className="text-[11px] text-muted-foreground">{r.session_time || "--:--"} · {r.duration_min || 0}min</p>
+                    </TableCell>
+                    <TableCell>{r.therapist_name}</TableCell>
+                    <TableCell className="text-right">{r.targets_count}</TableCell>
+                    <TableCell className="text-right">{r.avg_performance ?? 0}%</TableCell>
+                    <TableCell>
+                      <Badge className={cancelled ? "bg-destructive/15 text-destructive border-0" : "bg-success/15 text-success border-0"}>
+                        {cancelled ? "Cancelada" : r.status}
+                      </Badge>
+                      {cancelled && r.cancel_reason && (
+                        <p className="text-[11px] text-muted-foreground mt-1">{r.cancel_reason}</p>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button asChild size="icon" variant="ghost">
+                          <Link to="/session/$patientId" params={{ patientId }} search={{ recordId: r.id }}>
+                            <Pencil className="size-4" />
+                          </Link>
+                        </Button>
+                        {!cancelled && (
+                          <Button size="icon" variant="ghost" onClick={() => cancel(r.id)}>
+                            <Ban className="size-4" />
+                          </Button>
+                        )}
+                        {currentUser?.role === "admin" && (
+                          <Button size="icon" variant="ghost" onClick={() => remove(r.id)}>
+                            <Trash2 className="size-4 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              {records.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} className="py-8 text-center text-xs text-muted-foreground">
+                    Nenhuma sessão registrada ainda.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

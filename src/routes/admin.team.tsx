@@ -2,7 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { requireRole } from "@/lib/route-guard";
 import { useState, useEffect } from "react";
 import { AppLayout, PageHeader } from "@/components/app-layout";
-import { getClinicTeam, createTeamMember, type TeamMemberItem } from "@/queries/team";
+import {
+  createTeamMember,
+  getClinicTeam,
+  resetTeamMemberPassword,
+  setTeamMemberActive,
+  updateTeamMember,
+  type TeamMemberItem,
+} from "@/queries/team";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -37,6 +44,8 @@ import {
   Sparkles,
   ShieldCheck,
   Stethoscope,
+  Pencil,
+  Ban,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -76,6 +85,7 @@ function TeamPage() {
 
   // Modal de cadastro
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<TeamMemberItem | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [registry, setRegistry] = useState("");
@@ -118,27 +128,40 @@ function TeamPage() {
       setFormError("Informe um e-mail profissional válido.");
       return;
     }
-    if (!password || password.length < 6) {
+    if (!editingMember && (!password || password.length < 6)) {
       setFormError("A senha inicial deve conter pelo menos 6 caracteres.");
       return;
     }
 
     setSubmitting(true);
     try {
-      const res = await createTeamMember({
-        data: {
-          name: name.trim(),
-          email: email.trim(),
-          registry: registry.trim() || undefined,
-          role,
-          password,
-        },
-      });
+      if (editingMember) {
+        await updateTeamMember({
+          data: {
+            id: editingMember.id,
+            name: name.trim(),
+            email: email.trim(),
+            registry: registry.trim() || undefined,
+            role,
+          },
+        });
+        toast.success("Profissional atualizado.");
+      } else {
+        const res = await createTeamMember({
+          data: {
+            name: name.trim(),
+            email: email.trim(),
+            registry: registry.trim() || undefined,
+            role,
+            password,
+          },
+        });
 
-      toast.success(`Profissional ${res.name} cadastrado com sucesso! 🎉`, {
-        description: `Senha padrão configurada: ${res.password} (Copie e envie ao usuário)`,
-        duration: 8000,
-      });
+        toast.success(`Profissional ${res.name} cadastrado com sucesso! 🎉`, {
+          description: `Senha padrão configurada: ${res.password} (Copie e envie ao usuário)`,
+          duration: 8000,
+        });
+      }
 
       // Limpa e fecha modal
       setName("");
@@ -146,6 +169,7 @@ function TeamPage() {
       setRegistry("");
       setRole("therapist");
       setPassword("Gize@2026");
+      setEditingMember(null);
       setDialogOpen(false);
 
       // Recarrega equipe em tempo real
@@ -157,6 +181,44 @@ function TeamPage() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const openCreate = () => {
+    setEditingMember(null);
+    setName("");
+    setEmail("");
+    setRegistry("");
+    setRole("therapist");
+    setPassword("Gize@2026");
+    setDialogOpen(true);
+  };
+
+  const openEdit = (member: TeamMemberItem) => {
+    setEditingMember(member);
+    setName(member.name);
+    setEmail(member.email);
+    setRegistry(member.registry || "");
+    setRole(member.role);
+    setPassword("");
+    setDialogOpen(true);
+  };
+
+  const toggleActive = async (member: TeamMemberItem) => {
+    const active = member.is_active !== 1;
+    await setTeamMemberActive({ data: { id: member.id, active } });
+    toast.success(active ? "Profissional reativado." : "Profissional desativado.");
+    loadTeamData();
+  };
+
+  const resetPassword = async (member: TeamMemberItem) => {
+    const newPassword = prompt(`Nova senha para ${member.name}:`, "Gize@2026");
+    if (!newPassword) return;
+    if (newPassword.length < 6) {
+      toast.error("A senha precisa ter pelo menos 6 caracteres.");
+      return;
+    }
+    await resetTeamMemberPassword({ data: { id: member.id, password: newPassword } });
+    toast.success("Senha redefinida.", { description: `Nova senha: ${newPassword}`, duration: 8000 });
   };
 
   const filteredTeam = team.filter(
@@ -173,7 +235,7 @@ function TeamPage() {
         title="Equipe clínica"
         subtitle={`${team.length} profissionais cadastrados na unidade.`}
         action={
-          <Button size="sm" onClick={() => setDialogOpen(true)}>
+          <Button size="sm" onClick={openCreate}>
             <UserPlus className="size-4 mr-1.5" /> Adicionar Membro
           </Button>
         }
@@ -239,6 +301,17 @@ function TeamPage() {
                     <Progress value={(m.weeklyHours / 40) * 100} className="h-1.5" />
                   </div>
                 </div>
+                <div className="mt-3 flex flex-wrap justify-end gap-1 border-t border-border/60 pt-3">
+                  <Button size="sm" variant="outline" onClick={() => openEdit(m)}>
+                    <Pencil className="size-3.5" /> Editar
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => resetPassword(m)}>
+                    <KeyRound className="size-3.5" /> Senha
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => toggleActive(m)}>
+                    <Ban className="size-3.5" /> {m.is_active === 1 ? "Desativar" : "Reativar"}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -285,10 +358,10 @@ function TeamPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg font-semibold">
-              <UserPlus className="size-5 text-primary" /> Cadastrar Novo Membro
+              <UserPlus className="size-5 text-primary" /> {editingMember ? "Editar Membro" : "Cadastrar Novo Membro"}
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Cadastre um novo profissional na equipe clínica e defina suas credenciais iniciais.
+              {editingMember ? "Atualize os dados do profissional selecionado." : "Cadastre um novo profissional na equipe clínica e defina suas credenciais iniciais."}
             </DialogDescription>
           </DialogHeader>
 
@@ -365,7 +438,7 @@ function TeamPage() {
             </div>
 
             {/* Seção de Credenciais com Senha Padrão */}
-            <div className="p-3.5 rounded-lg border border-primary/20 bg-primary-soft/30 space-y-3">
+            {!editingMember && <div className="p-3.5 rounded-lg border border-primary/20 bg-primary-soft/30 space-y-3">
               <div className="flex items-center justify-between">
                 <Label htmlFor="team-password" className="text-xs font-semibold flex items-center gap-1.5 text-foreground">
                   <KeyRound className="size-3.5 text-primary" /> Senha Inicial / Padrão *
@@ -405,7 +478,7 @@ function TeamPage() {
               <p className="text-[11px] text-muted-foreground leading-tight">
                 ℹ️ O usuário deverá alterar esta senha no primeiro acesso ou no seu perfil institucional.
               </p>
-            </div>
+            </div>}
 
             {/* Mensagem de Erro Inline */}
             {formError && (
@@ -430,7 +503,7 @@ function TeamPage() {
                     <Loader2 className="size-4 animate-spin mr-1.5" /> Salvando no D1...
                   </>
                 ) : (
-                  "Salvar no D1"
+                  editingMember ? "Salvar alterações" : "Salvar no D1"
                 )}
               </Button>
             </DialogFooter>

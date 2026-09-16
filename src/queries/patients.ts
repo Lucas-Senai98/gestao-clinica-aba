@@ -8,6 +8,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getDB, generateId, now } from "@/db/db";
 import type { DbPatient, PatientSummary, PatientStatus } from "@/db/types";
+import { getSessionUser } from "@/queries/auth";
+import { logAuditEvent } from "@/queries/notifications_audit";
 import { DEV_TEAM_MEMBERS } from "@/queries/team";
 
 // ── In-Memory Store de Desenvolvimento (Garante criação e listagem imediatas) ──
@@ -567,6 +569,43 @@ export const updatePatient = createServerFn({ method: "POST" })
     }
 
     return { success: true };
+  });
+
+export const archivePatient = createServerFn({ method: "POST" })
+  .validator(z.object({ id: z.string(), status: z.enum(["Pausado", "Alta"]).default("Pausado") }))
+  .handler(async ({ data }) => {
+    const user = await getSessionUser();
+    if (!user || user.role !== "admin") {
+      throw new Error("Apenas supervisores podem arquivar pacientes.");
+    }
+
+    const idx = DEV_PATIENTS.findIndex((p) => p.id === data.id);
+    if (idx !== -1) {
+      DEV_PATIENTS[idx] = { ...DEV_PATIENTS[idx], status: data.status, updated_at: now() };
+    }
+
+    await getDB()
+      .prepare(`UPDATE patients SET status = ?1, updated_at = datetime('now') WHERE id = ?2`)
+      .bind(data.status, data.id)
+      .run();
+    await logAuditEvent(user.id, "ARCHIVE_PATIENT", "patients", data.id);
+    return { ok: true };
+  });
+
+export const deletePatient = createServerFn({ method: "POST" })
+  .validator(z.object({ id: z.string() }))
+  .handler(async ({ data }) => {
+    const user = await getSessionUser();
+    if (!user || user.role !== "admin") {
+      throw new Error("Apenas supervisores podem excluir pacientes.");
+    }
+
+    const idx = DEV_PATIENTS.findIndex((p) => p.id === data.id);
+    if (idx !== -1) DEV_PATIENTS.splice(idx, 1);
+
+    await getDB().prepare(`DELETE FROM patients WHERE id = ?1`).bind(data.id).run();
+    await logAuditEvent(user.id, "DELETE_PATIENT", "patients", data.id);
+    return { ok: true };
   });
 
 /**

@@ -1,8 +1,8 @@
-import { createFileRoute, Link, useNavigate, useParams } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { useState, useCallback, useEffect } from "react";
 import { requireAuth } from "@/lib/route-guard";
 import { useCurrentUser } from "@/lib/auth-context";
-import { saveDailyRecord } from "@/queries/sessions";
+import { getSessionRecordDetail, saveDailyRecord } from "@/queries/sessions";
 import { getPatientById } from "@/queries/patients";
 import { AppLayout, PageHeader } from "@/components/app-layout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -77,6 +77,9 @@ const intensityConfig = {
 
 export const Route = createFileRoute("/session/$patientId")({
   beforeLoad: requireAuth(),
+  validateSearch: (search: Record<string, unknown>) => ({
+    recordId: typeof search.recordId === "string" ? search.recordId : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Folha de Registro de Sessão ABA — Gestão Clínica ABA" },
@@ -94,6 +97,7 @@ export const Route = createFileRoute("/session/$patientId")({
 
 function SessionForm() {
   const { patientId } = useParams({ from: "/session/$patientId" });
+  const { recordId } = useSearch({ from: "/session/$patientId" });
   const navigate      = useNavigate();
   const currentUser   = useCurrentUser();
   const [patient, setPatient] = useState<{ id: string; name: string } | null>(null);
@@ -111,6 +115,43 @@ function SessionForm() {
         .catch(() => setPatient({ id: patientId, name: "Paciente" }));
     }
   }, [patientId, currentUser]);
+
+  useEffect(() => {
+    if (!recordId) return;
+    getSessionRecordDetail({ data: { recordId } })
+      .then((res) => {
+        const r = res.record as any;
+        setSessionDate(String(r.session_date || todayISO()));
+        setSessionTime(String(r.session_time || nowTime()).slice(0, 5));
+        setDurationMin(r.duration_min ? Number(r.duration_min) : 50);
+        setCooperation(Number(r.cooperation) === 1);
+        setAttention(Number(r.attention) === 1);
+        setInappropriate(Number(r.inappropriate) === 1);
+        setTransitions((r.transitions || "facil") as any);
+        setEyeContact((r.eye_contact || "adequado") as any);
+        setCommunication((r.communication || "parcial") as any);
+        setReinforcers(String(r.reinforcers_used || ""));
+        setGeneralNotes(String(r.general_notes || ""));
+        setTargets(
+          res.targets.map((t: any) => ({
+            id: String(t.id),
+            name: String(t.target_name || ""),
+            trials: Number(t.trials) || 0,
+            correct: Number(t.correct) || 0,
+          })),
+        );
+        setBehaviors(
+          res.behaviors.map((b: any) => ({
+            id: String(b.id),
+            topography: String(b.topography || ""),
+            duration_min: b.duration_min == null ? "" : Number(b.duration_min),
+            intensity: (b.intensity || "") as any,
+            context: String(b.context || ""),
+          })),
+        );
+      })
+      .catch((err) => toast.error("Erro ao carregar sessão", { description: err instanceof Error ? err.message : "Erro" }));
+  }, [recordId]);
 
   // ── Estado: cabeçalho da sessão ───────────────────────────────────────────
   const [sessionDate, setSessionDate] = useState(todayISO());
@@ -193,6 +234,7 @@ function SessionForm() {
       const result = await saveDailyRecord({
         data: {
           patientId,
+          recordId,
           sessionDate,
           sessionTime:  sessionTime || undefined,
           durationMin:  durationMin !== "" ? Number(durationMin) : undefined,
@@ -220,7 +262,7 @@ function SessionForm() {
         },
       });
 
-      toast.success("Folha de registro salva com sucesso! ✅", {
+      toast.success(recordId ? "Folha de registro atualizada com sucesso! ✅" : "Folha de registro salva com sucesso! ✅", {
         description: `Sessão de ${patient?.name ?? "Paciente"} arquivada no prontuário (${result.targets_saved} programa${result.targets_saved !== 1 ? "s" : ""}${result.behaviors_saved > 0 ? ` · ${result.behaviors_saved} comportamento${result.behaviors_saved !== 1 ? "s" : ""}` : ""}).`,
         duration: 4000,
       });
@@ -249,8 +291,8 @@ function SessionForm() {
       </Button>
 
       <PageHeader
-        title="Folha de Registro ABA"
-        subtitle="Diário de sessão — preenchimento otimizado para mobile."
+        title={recordId ? "Editar Folha de Registro ABA" : "Folha de Registro ABA"}
+        subtitle={recordId ? "Ajuste os dados da sessão arquivada." : "Diário de sessão — preenchimento otimizado para mobile."}
       />
 
       {/* ── Cabeçalho da sessão ──────────────────────────────────────────── */}
@@ -630,7 +672,7 @@ function SessionForm() {
           ) : (
             <>
               <Save className="size-5" />
-              Salvar registro
+              {recordId ? "Salvar alterações" : "Salvar registro"}
             </>
           )}
         </Button>
