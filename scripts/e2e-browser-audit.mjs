@@ -31,7 +31,7 @@ async function main() {
     try {
       const res = await fetch("http://127.0.0.1:9222/json/list");
       const list = await res.json();
-      const pageTarget = list.find((t) => t.type === "page" && t.url.includes("8080"));
+      const pageTarget = list.find((t) => t.type === "page" && !t.url.startsWith("chrome-extension://")) || list.find((t) => t.type === "page");
       if (pageTarget) {
         pageWsUrl = pageTarget.webSocketDebuggerUrl;
         connected = true;
@@ -71,6 +71,7 @@ async function main() {
   await send("Page.enable");
   await send("Runtime.enable");
   await send("DOM.enable");
+  await send("Network.enable");
 
   async function evalJs(expr) {
     const res = await send("Runtime.evaluate", {
@@ -365,6 +366,7 @@ async function main() {
     // TESTE 11: Portal dos Pais (/parent)
     // ----------------------------------------------------
     console.log("\n--- TESTE 11: Portal dos Pais (/parent) ---");
+    await send("Network.clearBrowserCookies");
     await navigate("http://localhost:8080/login");
     await waitForSelector("button");
 

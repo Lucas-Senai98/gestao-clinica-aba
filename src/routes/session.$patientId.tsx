@@ -77,7 +77,7 @@ const intensityConfig = {
 
 export const Route = createFileRoute("/session/$patientId")({
   beforeLoad: requireAuth(),
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): { recordId?: string } => ({
     recordId: typeof search.recordId === "string" ? search.recordId : undefined,
   }),
   head: () => ({
@@ -120,6 +120,7 @@ function SessionForm() {
     if (!recordId) return;
     getSessionRecordDetail({ data: { recordId } })
       .then((res) => {
+        if (!res) return;
         const r = res.record as any;
         setSessionDate(String(r.session_date || todayISO()));
         setSessionTime(String(r.session_time || nowTime()).slice(0, 5));
@@ -132,23 +133,27 @@ function SessionForm() {
         setCommunication((r.communication || "parcial") as any);
         setReinforcers(String(r.reinforcers_used || ""));
         setGeneralNotes(String(r.general_notes || ""));
-        setTargets(
-          res.targets.map((t: any) => ({
-            id: String(t.id),
-            name: String(t.target_name || ""),
-            trials: Number(t.trials) || 0,
-            correct: Number(t.correct) || 0,
-          })),
-        );
-        setBehaviors(
-          res.behaviors.map((b: any) => ({
-            id: String(b.id),
-            topography: String(b.topography || ""),
-            duration_min: b.duration_min == null ? "" : Number(b.duration_min),
-            intensity: (b.intensity || "") as any,
-            context: String(b.context || ""),
-          })),
-        );
+        if (res.targets) {
+          setTargets(
+            res.targets.map((t: any) => ({
+              id: String(t.id),
+              name: String(t.target_name || ""),
+              trials: Number(t.trials) || 0,
+              correct: Number(t.correct) || 0,
+            })),
+          );
+        }
+        if (res.behaviors) {
+          setBehaviors(
+            res.behaviors.map((b: any) => ({
+              id: String(b.id),
+              topography: String(b.topography || ""),
+              duration_min: b.duration_min == null ? "" : Number(b.duration_min),
+              intensity: (b.intensity || "") as any,
+              context: String(b.context || ""),
+            })),
+          );
+        }
       })
       .catch((err) => toast.error("Erro ao carregar sessão", { description: err instanceof Error ? err.message : "Erro" }));
   }, [recordId]);

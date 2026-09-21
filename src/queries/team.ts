@@ -418,7 +418,7 @@ export const resetTeamMemberPassword = createServerFn({ method: "POST" })
           email: member.email,
           name: member.name,
           role: member.role,
-          avatar_initials: member.avatar_initials || undefined,
+          avatar_initials: member.avatar_initials || null,
         },
         data.password,
         hashHex,

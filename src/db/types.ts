@@ -248,3 +248,43 @@ export interface DbForumReply {
   created_at: string;
   updated_at: string;
 }
+
+// ── Módulo Financeiro: Contas a Pagar e Receber ───────────────────────────────
+
+export type FinancialEntryType = "receivable" | "payable";
+export type FinancialEntryStatus = "pending" | "completed" | "overdue" | "cancelled";
+export type FinancialPaymentMethod = "pix" | "boleto" | "cartao" | "transferencia" | "dinheiro";
+
+export interface DbFinancialEntry {
+  id: string;
+  type: FinancialEntryType;
+  category: string;
+  description: string;
+  amount: number;
+  due_date: string;
+  payment_date: string | null;
+  status: FinancialEntryStatus;
+  patient_id: string | null;
+  therapist_id: string | null;
+  payment_method: FinancialPaymentMethod | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FinancialEntryWithRelations extends DbFinancialEntry {
+  patient_name?: string | null;
+  therapist_name?: string | null;
+}
+
+export interface FinancialSummaryKPIs {
+  totalReceivablePending: number;
+  totalReceivableReceived: number;
+  totalPayablePending: number;
+  totalPayablePaid: number;
+  projectedBalance: number;
+  realizedBalance: number;
+  overdueCount: number;
+  overdueTotal: number;
+}
+

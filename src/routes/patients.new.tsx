@@ -137,6 +137,7 @@ function NewPatient() {
               specialty: t.specialty,
             })),
           );
+          setForm((f) => (f.therapistId ? f : { ...f, therapistId: team[0].id }));
         }
       })
       .catch(() => setTherapistsList([]));

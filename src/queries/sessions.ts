@@ -282,9 +282,57 @@ export const getSessionRecords = createServerFn({ method: "GET" })
     return records.results;
   });
 
+export interface SessionRecordRow {
+  id: string;
+  patient_id: string;
+  therapist_id: string;
+  session_date: string;
+  session_time?: string | null;
+  duration_min?: number | null;
+  cooperation?: number | boolean;
+  attention?: number | boolean;
+  inappropriate?: number | boolean;
+  transitions?: string | null;
+  eye_contact?: string | null;
+  communication?: string | null;
+  reinforcers_used?: string | null;
+  general_notes?: string | null;
+  status?: string;
+  cancelled_at?: string | null;
+  cancel_reason?: string | null;
+  patient_name?: string;
+  therapist_name?: string;
+}
+
+export interface TargetRecordRow {
+  id: string;
+  daily_record_id?: string;
+  target_name: string;
+  trials: number;
+  correct: number;
+  notes?: string | null;
+  sort_order?: number | null;
+}
+
+export interface BehaviorRecordRow {
+  id: string;
+  daily_record_id?: string;
+  topography: string;
+  duration_min?: number | null;
+  intensity?: string | null;
+  context?: string | null;
+  notes?: string | null;
+}
+
+export interface SessionRecordDetail {
+  record: SessionRecordRow;
+  targets: TargetRecordRow[];
+  behaviors: BehaviorRecordRow[];
+}
+
 export const getSessionRecordDetail = createServerFn({ method: "GET" })
   .validator(z.object({ recordId: z.string() }))
-  .handler(async ({ data }) => {
+  .handler(async ({ data }): Promise<SessionRecordDetail> => {
     const user = await getSessionUser();
     if (!user) throw new Error("Sessão expirada.");
 
@@ -299,7 +347,7 @@ export const getSessionRecordDetail = createServerFn({ method: "GET" })
          WHERE dr.id = ?1`,
       )
       .bind(data.recordId)
-      .first<Record<string, unknown>>();
+      .first<SessionRecordRow>();
     if (!record) throw new Error("Registro não encontrado.");
 
     const [targets, behaviors] = await Promise.all([
@@ -311,7 +359,7 @@ export const getSessionRecordDetail = createServerFn({ method: "GET" })
            ORDER BY sort_order ASC`,
         )
         .bind(data.recordId)
-        .all<Record<string, unknown>>(),
+        .all<TargetRecordRow>(),
       db
         .prepare(
           `SELECT id, topography, duration_min, intensity, context, notes
@@ -320,13 +368,13 @@ export const getSessionRecordDetail = createServerFn({ method: "GET" })
            ORDER BY created_at ASC`,
         )
         .bind(data.recordId)
-        .all<Record<string, unknown>>(),
+        .all<BehaviorRecordRow>(),
     ]);
 
     return {
       record,
-      targets: targets.results,
-      behaviors: behaviors.results,
+      targets: targets.results || [],
+      behaviors: behaviors.results || [],
     };
   });
 

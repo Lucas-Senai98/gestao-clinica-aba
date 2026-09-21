@@ -75,8 +75,8 @@ export function generateSalt(): string {
 function setCookieSession(sessionId: string, expiresAt: Date) {
   setCookie(SESSION_COOKIE, sessionId, {
     httpOnly: true,
-    secure:   true,
-    sameSite: "strict",
+    secure:   false,
+    sameSite: "lax",
     path:     "/",
     expires:  expiresAt,
   });

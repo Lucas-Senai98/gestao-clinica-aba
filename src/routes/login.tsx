@@ -79,7 +79,7 @@ function LoginPage() {
         user.role === "admin" ? "/admin" : user.role === "parent" ? "/parent" : "/";
 
       await router.invalidate();
-      throw redirect({ to: dest });
+      await router.navigate({ to: dest });
     } catch (err: unknown) {
       if (err && typeof err === "object" && "to" in err) throw err; // re-throw redirect
       const msg =
