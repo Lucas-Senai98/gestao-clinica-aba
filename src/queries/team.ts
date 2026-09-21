@@ -19,6 +19,7 @@ export interface TeamMemberItem {
   registry: string | null;
   avatar_initials: string | null;
   is_active: number;
+  is_master?: number;
   change_password_required?: number;
   caseload: number;
   weeklyHours: number;
@@ -28,6 +29,19 @@ export interface TeamMemberItem {
 // ── In-Memory Store de Desenvolvimento (Garante que novos cadastros apareçam na hora) ──
 
 const INITIAL_DEV_TEAM: TeamMemberItem[] = [
+  {
+    id: "u-master-01",
+    email: "master@gizeclinica.com.br",
+    name: "Usuário Master",
+    role: "admin",
+    registry: null,
+    avatar_initials: "UM",
+    is_active: 1,
+    is_master: 1,
+    caseload: 0,
+    weeklyHours: 40,
+    status: "Ativa",
+  },
   {
     id: "tm1",
     email: "ana.lopes@gizeclinica.com.br",
@@ -107,6 +121,7 @@ export const getClinicTeam = createServerFn({ method: "GET" }).handler(async () 
       .prepare(
         `SELECT
            u.id, u.email, u.name, u.role, u.registry, u.avatar_initials, u.is_active,
+           COALESCE(u.is_master, 0) AS is_master,
            COUNT(DISTINCT pt.patient_id) AS caseload
          FROM users u
          LEFT JOIN patient_therapist pt ON pt.therapist_id = u.id
@@ -122,6 +137,7 @@ export const getClinicTeam = createServerFn({ method: "GET" }).handler(async () 
         registry: string | null;
         avatar_initials: string | null;
         is_active: number;
+        is_master: number;
         caseload: number;
       }>();
 
@@ -134,6 +150,7 @@ export const getClinicTeam = createServerFn({ method: "GET" }).handler(async () 
         registry: string | null;
         avatar_initials: string | null;
         is_active: number;
+        is_master: number;
         caseload: number;
       }): TeamMemberItem => {
         const roleTyped = (r.role === "admin" ? "admin" : "therapist") as "admin" | "therapist";
@@ -145,6 +162,7 @@ export const getClinicTeam = createServerFn({ method: "GET" }).handler(async () 
           registry: r.registry,
           avatar_initials: r.avatar_initials,
           is_active: r.is_active,
+          is_master: r.is_master,
           caseload: r.caseload,
           weeklyHours: roleTyped === "admin" ? 40 : Math.min(40, Math.max(16, r.caseload * 4)),
           status: r.is_active === 1 ? "Ativa" : "Inativo",
@@ -171,6 +189,7 @@ const CreateTeamMemberInput = z.object({
   email: z.string().email("Formato de e-mail inválido"),
   registry: z.string().optional(),
   role: z.enum(["therapist", "admin"]),
+  isMaster: z.boolean().optional(),
   password: z.string().min(6, "A senha inicial deve ter no mínimo 6 caracteres"),
 });
 
@@ -180,8 +199,8 @@ export const createTeamMember = createServerFn({ method: "POST" })
   .validator((d: unknown) => CreateTeamMemberInput.parse(d))
   .handler(async ({ data }) => {
     const user = await getSessionUser();
-    if (!user || user.role !== "admin") {
-      throw new Error("Acesso negado: Apenas supervisores podem cadastrar membros da equipe.");
+    if (!user || user.role !== "admin" || user.is_master !== 1) {
+      throw new Error("Acesso negado: apenas o usuário master pode cadastrar usuários.");
     }
 
     const cleanEmail = data.email.trim().toLowerCase();
@@ -222,8 +241,8 @@ export const createTeamMember = createServerFn({ method: "POST" })
       await db
         .prepare(
           `INSERT INTO users
-             (id, email, name, role, password_hash, password_salt, registry, avatar_initials, is_active, change_password_required)
-           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 1, 1)`,
+             (id, email, name, role, password_hash, password_salt, registry, avatar_initials, is_active, change_password_required, is_master)
+           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 1, 1, ?9)`,
         )
         .bind(
           newId,
@@ -234,6 +253,7 @@ export const createTeamMember = createServerFn({ method: "POST" })
           saltHex,
           data.registry?.trim() || null,
           avatar_initials,
+          data.role === "admin" && data.isMaster ? 1 : 0,
         )
         .run();
     } catch {
@@ -269,6 +289,7 @@ export const createTeamMember = createServerFn({ method: "POST" })
       registry: data.registry?.trim() || null,
       avatar_initials,
       is_active: 1,
+      is_master: data.role === "admin" && data.isMaster ? 1 : 0,
       change_password_required: 1,
       caseload: 0,
       weeklyHours: data.role === "admin" ? 40 : 20,
@@ -283,6 +304,7 @@ export const createTeamMember = createServerFn({ method: "POST" })
         name: data.name.trim(),
         role: data.role,
         avatar_initials,
+        is_master: data.role === "admin" && data.isMaster ? 1 : 0,
       },
       data.password,
       hashHex,
@@ -307,14 +329,15 @@ const UpdateTeamMemberInput = z.object({
   email: z.string().email(),
   registry: z.string().optional(),
   role: z.enum(["therapist", "admin"]),
+  isMaster: z.boolean().optional(),
 });
 
 export const updateTeamMember = createServerFn({ method: "POST" })
   .validator((d: unknown) => UpdateTeamMemberInput.parse(d))
   .handler(async ({ data }) => {
     const user = await getSessionUser();
-    if (!user || user.role !== "admin") {
-      throw new Error("Acesso negado: apenas supervisores podem editar membros.");
+    if (!user || user.role !== "admin" || user.is_master !== 1) {
+      throw new Error("Acesso negado: apenas o usuário master pode editar usuários.");
     }
 
     const cleanEmail = data.email.trim().toLowerCase();
@@ -327,10 +350,18 @@ export const updateTeamMember = createServerFn({ method: "POST" })
       .prepare(
         `UPDATE users
          SET name = ?1, email = ?2, registry = ?3, role = ?4,
-             avatar_initials = ?5, updated_at = datetime('now')
-         WHERE id = ?6`,
+             avatar_initials = ?5, is_master = ?6, updated_at = datetime('now')
+         WHERE id = ?7`,
       )
-      .bind(data.name.trim(), cleanEmail, data.registry?.trim() || null, data.role, avatar, data.id)
+      .bind(
+        data.name.trim(),
+        cleanEmail,
+        data.registry?.trim() || null,
+        data.role,
+        avatar,
+        data.role === "admin" && data.isMaster ? 1 : 0,
+        data.id,
+      )
       .run();
 
     const idx = DEV_TEAM_MEMBERS.findIndex((m) => m.id === data.id);
@@ -342,6 +373,7 @@ export const updateTeamMember = createServerFn({ method: "POST" })
         registry: data.registry?.trim() || null,
         role: data.role,
         avatar_initials: avatar,
+        is_master: data.role === "admin" && data.isMaster ? 1 : 0,
       };
     }
 
@@ -353,8 +385,8 @@ export const setTeamMemberActive = createServerFn({ method: "POST" })
   .validator(z.object({ id: z.string(), active: z.boolean() }))
   .handler(async ({ data }) => {
     const user = await getSessionUser();
-    if (!user || user.role !== "admin") {
-      throw new Error("Acesso negado: apenas supervisores podem alterar status.");
+    if (!user || user.role !== "admin" || user.is_master !== 1) {
+      throw new Error("Acesso negado: apenas o usuário master pode alterar status.");
     }
     if (data.id === user.id && !data.active) {
       throw new Error("Você não pode desativar sua própria conta.");
@@ -379,46 +411,87 @@ export const setTeamMemberActive = createServerFn({ method: "POST" })
   });
 
 export const resetTeamMemberPassword = createServerFn({ method: "POST" })
-  .validator(z.object({ id: z.string(), password: z.string().min(6) }))
+  .validator(z.object({ id: z.string(), email: z.string().email().optional(), password: z.string().min(6) }))
   .handler(async ({ data }) => {
     const user = await getSessionUser();
-    if (!user || user.role !== "admin") {
-      throw new Error("Acesso negado: apenas supervisores podem redefinir senhas.");
+    if (!user || user.role !== "admin" || user.is_master !== 1) {
+      throw new Error("Acesso negado: apenas o usuário master pode redefinir senhas.");
     }
 
     const saltHex = generateSalt();
     const hashHex = await pbkdf2Hash(data.password, saltHex);
+    const cleanEmail = data.email?.trim().toLowerCase();
+    const db = getDB();
+    let target = await db
+      .prepare(`SELECT id, email, name, role, avatar_initials, COALESCE(is_master, 0) AS is_master FROM users WHERE id = ?1 LIMIT 1`)
+      .bind(data.id)
+      .first<{
+        id: string;
+        email: string;
+        name: string;
+        role: "admin" | "therapist";
+        avatar_initials: string | null;
+        is_master: number;
+      }>()
+      .catch(() => null);
+
+    if (!target && cleanEmail) {
+      target = await db
+        .prepare(`SELECT id, email, name, role, avatar_initials, COALESCE(is_master, 0) AS is_master FROM users WHERE email = ?1 LIMIT 1`)
+        .bind(cleanEmail)
+        .first<{
+          id: string;
+          email: string;
+          name: string;
+          role: "admin" | "therapist";
+          avatar_initials: string | null;
+          is_master: number;
+        }>()
+        .catch(() => null);
+    }
+
+    const targetId = target?.id || data.id;
+    const targetEmail = target?.email?.trim().toLowerCase() || cleanEmail;
 
     try {
-      await getDB()
+      await db
         .prepare(
           `UPDATE users
            SET password_hash = ?1, password_salt = ?2,
                change_password_required = 1, updated_at = datetime('now')
-           WHERE id = ?3`,
+           WHERE id = ?3 OR (?4 IS NOT NULL AND email = ?4)`,
         )
-        .bind(hashHex, saltHex, data.id)
+        .bind(hashHex, saltHex, targetId, targetEmail || null)
         .run();
     } catch {
-      await getDB()
+      await db
         .prepare(
           `UPDATE users
            SET password_hash = ?1, password_salt = ?2, updated_at = datetime('now')
-           WHERE id = ?3`,
+           WHERE id = ?3 OR (?4 IS NOT NULL AND email = ?4)`,
         )
-        .bind(hashHex, saltHex, data.id)
+        .bind(hashHex, saltHex, targetId, targetEmail || null)
         .run();
     }
 
-    const member = DEV_TEAM_MEMBERS.find((m) => m.id === data.id);
+    await db
+      .prepare(`DELETE FROM auth_sessions WHERE user_id = ?1`)
+      .bind(targetId)
+      .run()
+      .catch(() => null);
+
+    const member = DEV_TEAM_MEMBERS.find(
+      (m) => m.id === data.id || (!!targetEmail && m.email.toLowerCase() === targetEmail),
+    );
     if (member) {
       registerDevUser(
         {
-          id: member.id,
-          email: member.email,
-          name: member.name,
-          role: member.role,
-          avatar_initials: member.avatar_initials || null,
+          id: targetId,
+          email: targetEmail || member.email,
+          name: target?.name || member.name,
+          role: target?.role || member.role,
+          avatar_initials: target?.avatar_initials || member.avatar_initials || null,
+          is_master: target?.is_master || member.is_master || 0,
         },
         data.password,
         hashHex,

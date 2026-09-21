@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { requireRole } from "@/lib/route-guard";
 import { useState, useEffect } from "react";
+import { useCurrentUser } from "@/lib/auth-context";
 import { AppLayout, PageHeader } from "@/components/app-layout";
 import {
   createTeamMember,
@@ -79,6 +80,8 @@ const statusTone: Record<string, string> = {
 };
 
 function TeamPage() {
+  const currentUser = useCurrentUser();
+  const isMaster = currentUser?.is_master === 1;
   const [team, setTeam] = useState<TeamMemberItem[]>([]);
   const [loadingTeam, setLoadingTeam] = useState(true);
   const [q, setQ] = useState("");
@@ -90,6 +93,7 @@ function TeamPage() {
   const [email, setEmail] = useState("");
   const [registry, setRegistry] = useState("");
   const [role, setRole] = useState<"therapist" | "admin">("therapist");
+  const [memberIsMaster, setMemberIsMaster] = useState(false);
   const [password, setPassword] = useState("Gize@2026");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -143,6 +147,7 @@ function TeamPage() {
             email: email.trim(),
             registry: registry.trim() || undefined,
             role,
+            isMaster: role === "admin" && memberIsMaster,
           },
         });
         toast.success("Profissional atualizado.");
@@ -153,6 +158,7 @@ function TeamPage() {
             email: email.trim(),
             registry: registry.trim() || undefined,
             role,
+            isMaster: role === "admin" && memberIsMaster,
             password,
           },
         });
@@ -168,6 +174,7 @@ function TeamPage() {
       setEmail("");
       setRegistry("");
       setRole("therapist");
+      setMemberIsMaster(false);
       setPassword("Gize@2026");
       setEditingMember(null);
       setDialogOpen(false);
@@ -189,6 +196,7 @@ function TeamPage() {
     setEmail("");
     setRegistry("");
     setRole("therapist");
+    setMemberIsMaster(false);
     setPassword("Gize@2026");
     setDialogOpen(true);
   };
@@ -199,11 +207,16 @@ function TeamPage() {
     setEmail(member.email);
     setRegistry(member.registry || "");
     setRole(member.role);
+    setMemberIsMaster(member.is_master === 1);
     setPassword("");
     setDialogOpen(true);
   };
 
   const toggleActive = async (member: TeamMemberItem) => {
+    if (!isMaster) {
+      toast.error("Apenas o usuário master pode desativar ou reativar usuários.");
+      return;
+    }
     const active = member.is_active !== 1;
     await setTeamMemberActive({ data: { id: member.id, active } });
     toast.success(active ? "Profissional reativado." : "Profissional desativado.");
@@ -211,13 +224,17 @@ function TeamPage() {
   };
 
   const resetPassword = async (member: TeamMemberItem) => {
+    if (!isMaster) {
+      toast.error("Apenas o usuário master pode redefinir senhas.");
+      return;
+    }
     const newPassword = prompt(`Nova senha para ${member.name}:`, "Gize@2026");
     if (!newPassword) return;
     if (newPassword.length < 6) {
       toast.error("A senha precisa ter pelo menos 6 caracteres.");
       return;
     }
-    await resetTeamMemberPassword({ data: { id: member.id, password: newPassword } });
+    await resetTeamMemberPassword({ data: { id: member.id, email: member.email, password: newPassword } });
     toast.success("Senha redefinida.", { description: `Nova senha: ${newPassword}`, duration: 8000 });
   };
 
@@ -235,11 +252,19 @@ function TeamPage() {
         title="Equipe clínica"
         subtitle={`${team.length} profissionais cadastrados na unidade.`}
         action={
-          <Button size="sm" onClick={openCreate}>
+          <Button size="sm" onClick={openCreate} disabled={!isMaster}>
             <UserPlus className="size-4 mr-1.5" /> Adicionar Membro
           </Button>
         }
       />
+
+      {!isMaster && (
+        <Card className="mb-4 border-warning/30 bg-warning/10">
+          <CardContent className="p-3 text-xs text-warning-foreground">
+            Você está em uma conta administrativa comum. Apenas o usuário master pode cadastrar usuários, redefinir senhas e desativar acessos.
+          </CardContent>
+        </Card>
+      )}
 
       <div className="relative mb-4">
         <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -279,6 +304,11 @@ function TeamPage() {
                         )}
                         {m.role === "admin" ? "Supervisora" : "Terapeuta"}
                       </Badge>
+                      {m.is_master === 1 && (
+                        <Badge className="text-[10px] bg-primary/15 text-primary border-0 flex items-center gap-1">
+                          <ShieldCheck className="size-3" /> Master
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {m.registry ? `${m.registry}` : "Sem registro profissional informado"}
@@ -302,13 +332,13 @@ function TeamPage() {
                   </div>
                 </div>
                 <div className="mt-3 flex flex-wrap justify-end gap-1 border-t border-border/60 pt-3">
-                  <Button size="sm" variant="outline" onClick={() => openEdit(m)}>
+                  <Button size="sm" variant="outline" onClick={() => openEdit(m)} disabled={!isMaster}>
                     <Pencil className="size-3.5" /> Editar
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => resetPassword(m)}>
+                  <Button size="sm" variant="outline" onClick={() => resetPassword(m)} disabled={!isMaster}>
                     <KeyRound className="size-3.5" /> Senha
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => toggleActive(m)}>
+                  <Button size="sm" variant="ghost" onClick={() => toggleActive(m)} disabled={!isMaster || m.id === currentUser?.id}>
                     <Ban className="size-3.5" /> {m.is_active === 1 ? "Desativar" : "Reativar"}
                   </Button>
                 </div>
@@ -419,7 +449,10 @@ function TeamPage() {
                 </Label>
                 <Select
                   value={role}
-                  onValueChange={(val: "therapist" | "admin") => setRole(val)}
+                  onValueChange={(val: "therapist" | "admin") => {
+                    setRole(val);
+                    if (val !== "admin") setMemberIsMaster(false);
+                  }}
                   disabled={submitting}
                 >
                   <SelectTrigger id="team-role" className="text-xs h-9">
@@ -436,6 +469,24 @@ function TeamPage() {
                 </Select>
               </div>
             </div>
+
+            {role === "admin" && (
+              <label className="flex items-start gap-2 rounded-lg border border-primary/20 bg-primary-soft/25 p-3 text-xs">
+                <input
+                  type="checkbox"
+                  checked={memberIsMaster}
+                  onChange={(e) => setMemberIsMaster(e.target.checked)}
+                  disabled={submitting}
+                  className="mt-0.5"
+                />
+                <span>
+                  <span className="font-semibold">Usuário master</span>
+                  <span className="block text-muted-foreground">
+                    Pode cadastrar usuários, redefinir senhas e gerenciar acessos da clínica.
+                  </span>
+                </span>
+              </label>
+            )}
 
             {/* Seção de Credenciais com Senha Padrão */}
             {!editingMember && <div className="p-3.5 rounded-lg border border-primary/20 bg-primary-soft/30 space-y-3">

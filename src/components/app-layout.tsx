@@ -98,7 +98,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <p className="text-xs font-medium leading-tight truncate">{user?.name ?? "—"}</p>
         <p className="text-[10px] text-muted-foreground leading-tight flex items-center gap-1">
           <RoleIcon className="size-3" />
-          {roleLabel[role]}
+          {user?.is_master === 1 ? "Master" : roleLabel[role]}
         </p>
       </div>
     </div>

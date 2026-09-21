@@ -20,6 +20,7 @@ export interface SessionUser {
   name:            string;
   role:            Role;
   avatar_initials: string | null;
+  is_master?:      number;
 }
 
 export interface DevUserCredential {
@@ -85,6 +86,17 @@ function setCookieSession(sessionId: string, expiresAt: Date) {
 // ── Store de Usuários e Sessões de Desenvolvimento em Memória ─────────
 
 const DEV_CREDENTIALS: Record<string, DevUserCredential> = {
+  "master@gizeclinica.com.br": {
+    user: {
+      id: "u-master-01",
+      email: "master@gizeclinica.com.br",
+      name: "Usuário Master",
+      role: "admin",
+      avatar_initials: "UM",
+      is_master: 1,
+    },
+    password: "Master@2026",
+  },
   "supervisora@gizeclinica.com.br": {
     user: {
       id: "u-admin-01",
@@ -196,7 +208,7 @@ export const getSessionUser = createServerFn({ method: "GET" }).handler(
       const db = getDB();
       const row = await db
         .prepare(
-          `SELECT s.user_id, u.email, u.name, u.role, u.avatar_initials
+          `SELECT s.user_id, u.email, u.name, u.role, u.avatar_initials, COALESCE(u.is_master, 0) AS is_master
            FROM auth_sessions s
            JOIN users u ON u.id = s.user_id
            WHERE s.id = ?1
@@ -211,6 +223,7 @@ export const getSessionUser = createServerFn({ method: "GET" }).handler(
           name:            string;
           role:            string;
           avatar_initials: string | null;
+          is_master:       number;
         }>();
 
       if (row) {
@@ -220,6 +233,7 @@ export const getSessionUser = createServerFn({ method: "GET" }).handler(
           name:            row.name,
           role:            row.role as Role,
           avatar_initials: row.avatar_initials,
+          is_master:       row.is_master,
         };
       }
 
@@ -247,7 +261,7 @@ export const loginUser = createServerFn({ method: "POST" })
     try {
       const row = await db
         .prepare(
-          `SELECT id, email, name, role, avatar_initials, password_hash, password_salt
+          `SELECT id, email, name, role, avatar_initials, COALESCE(is_master, 0) AS is_master, password_hash, password_salt
            FROM users
            WHERE email = ?1 AND is_active = 1
            LIMIT 1`,
@@ -256,6 +270,7 @@ export const loginUser = createServerFn({ method: "POST" })
         .first<{
           id: string; email: string; name: string; role: string;
           avatar_initials: string | null;
+          is_master: number;
           password_hash: string; password_salt: string;
         }>();
 
@@ -266,6 +281,7 @@ export const loginUser = createServerFn({ method: "POST" })
           name:            row.name,
           role:            row.role as Role,
           avatar_initials: row.avatar_initials,
+          is_master:       row.is_master,
           password_hash:   row.password_hash,
           password_salt:   row.password_salt,
         };
@@ -279,7 +295,8 @@ export const loginUser = createServerFn({ method: "POST" })
 
     if (user && user.password_salt && user.password_hash) {
       if (user.password_salt === "PLACEHOLDER_SALT" || user.password_salt.startsWith("dev_")) {
-        valid = true;
+        const devCred = DEV_CREDENTIALS[cleanEmail];
+        valid = devCred?.password === data.password;
       } else {
         const hash = await pbkdf2Hash(data.password, user.password_salt);
         valid = hash === user.password_hash;
@@ -318,6 +335,7 @@ export const loginUser = createServerFn({ method: "POST" })
       name:            user.name,
       role:            user.role as Role,
       avatar_initials: user.avatar_initials,
+      is_master:       user.is_master || 0,
     };
 
     DEV_SESSIONS[sessionId] = sessionUser;
