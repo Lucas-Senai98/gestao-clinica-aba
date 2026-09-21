@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { requireRole } from "@/lib/route-guard";
+import { requirePermission } from "@/lib/route-guard";
 import { useState, useEffect } from "react";
 import { AppLayout, PageHeader } from "@/components/app-layout";
 import { getTherapistHours, type TherapistHourItem } from "@/queries/approvals";
@@ -16,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/admin/hours")({
-  beforeLoad: requireRole("admin"),
+  beforeLoad: requirePermission("hours:view"),
   head: () => ({
     meta: [
       { title: "Controle de Horas — Gestão Clínica ABA" },

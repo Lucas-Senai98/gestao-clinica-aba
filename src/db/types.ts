@@ -36,6 +36,7 @@ export interface DbUser {
   avatar_initials: string | null;
   is_active: number; // 0 | 1 (SQLite boolean)
   is_master?: number; // 0 | 1, apenas usuários admin podem ser master
+  permissions?: string[] | string | null;
   created_at: string;
   updated_at: string;
 }

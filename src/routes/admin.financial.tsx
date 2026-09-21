@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import type { FormEvent, ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { requireRole } from "@/lib/route-guard";
+import { requirePermission } from "@/lib/route-guard";
 import { AppLayout, PageHeader } from "@/components/app-layout";
 import {
   createFinancialEntry,
@@ -39,7 +40,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/financial")({
-  beforeLoad: requireRole("admin"),
+  beforeLoad: requirePermission("financial:view"),
   head: () => ({
     meta: [
       { title: "Gestão Financeira — Gestão Clínica ABA" },

@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { requireAuth } from "@/lib/route-guard";
+import { requirePermission } from "@/lib/route-guard";
 import { useState, useEffect } from "react";
 import { useCurrentUser } from "@/lib/auth-context";
 import { AppLayout, PageHeader } from "@/components/app-layout";
@@ -15,7 +16,7 @@ import { Search, ChevronRight, LineChart, UserPlus, Pencil, Loader2, Archive, Tr
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/patients/")({
-  beforeLoad: requireAuth(),
+  beforeLoad: requirePermission("patients:view"),
   head: () => ({
     meta: [
       { title: "Pacientes — Gestão Clínica ABA" },

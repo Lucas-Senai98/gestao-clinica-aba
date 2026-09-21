@@ -7,6 +7,7 @@ import { getCookie, setCookie, deleteCookie } from "@tanstack/react-start/server
 import { z } from "zod";
 import { getDB, generateId } from "@/db/db";
 import type { Role } from "@/db/types";
+import { normalizePermissions, PRESETS } from "@/lib/permissions";
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 const SESSION_COOKIE = "gizes_session";
@@ -21,6 +22,7 @@ export interface SessionUser {
   role:            Role;
   avatar_initials: string | null;
   is_master?:      number;
+  permissions?:    string[] | null;
 }
 
 export interface DevUserCredential {
@@ -83,9 +85,7 @@ function setCookieSession(sessionId: string, expiresAt: Date) {
   });
 }
 
-// ── Store de Usuários e Sessões de Desenvolvimento em Memória ─────────
-
-const DEV_CREDENTIALS: Record<string, DevUserCredential> = {
+const INITIAL_DEV_CREDENTIALS: Record<string, DevUserCredential> = {
   "master@gizeclinica.com.br": {
     user: {
       id: "u-master-01",
@@ -94,6 +94,7 @@ const DEV_CREDENTIALS: Record<string, DevUserCredential> = {
       role: "admin",
       avatar_initials: "UM",
       is_master: 1,
+      permissions: ["*"],
     },
     password: "Master@2026",
   },
@@ -104,6 +105,8 @@ const DEV_CREDENTIALS: Record<string, DevUserCredential> = {
       name: "Marina Duarte",
       role: "admin",
       avatar_initials: "MD",
+      is_master: 1,
+      permissions: ["*"],
     },
     password: "Gizes@2025",
   },
@@ -114,6 +117,8 @@ const DEV_CREDENTIALS: Record<string, DevUserCredential> = {
       name: "Ana Beatriz Lopes",
       role: "therapist",
       avatar_initials: "AB",
+      is_master: 0,
+      permissions: [...PRESETS.THERAPIST],
     },
     password: "Gizes@2025",
   },
@@ -124,6 +129,8 @@ const DEV_CREDENTIALS: Record<string, DevUserCredential> = {
       name: "Carla Mendes",
       role: "therapist",
       avatar_initials: "CM",
+      is_master: 0,
+      permissions: [...PRESETS.THERAPIST],
     },
     password: "Gizes@2025",
   },
@@ -134,6 +141,8 @@ const DEV_CREDENTIALS: Record<string, DevUserCredential> = {
       name: "Diego Ramos",
       role: "therapist",
       avatar_initials: "DR",
+      is_master: 0,
+      permissions: [...PRESETS.THERAPIST],
     },
     password: "Gizes@2025",
   },
@@ -144,6 +153,8 @@ const DEV_CREDENTIALS: Record<string, DevUserCredential> = {
       name: "Fernanda Souza",
       role: "therapist",
       avatar_initials: "FS",
+      is_master: 0,
+      permissions: [...PRESETS.THERAPIST],
     },
     password: "Gizes@2025",
   },
@@ -154,6 +165,8 @@ const DEV_CREDENTIALS: Record<string, DevUserCredential> = {
       name: "Mariana Almeida",
       role: "parent",
       avatar_initials: "MA",
+      is_master: 0,
+      permissions: [],
     },
     password: "Gizes@2025",
   },
@@ -164,12 +177,27 @@ const DEV_CREDENTIALS: Record<string, DevUserCredential> = {
       name: "Rafael Pereira",
       role: "parent",
       avatar_initials: "RP",
+      is_master: 0,
+      permissions: [],
     },
     password: "Gizes@2025",
   },
 };
 
-const DEV_SESSIONS: Record<string, SessionUser> = {};
+const gAuth = globalThis as unknown as {
+  __DEV_CREDENTIALS__?: Record<string, DevUserCredential>;
+  __DEV_SESSIONS__?: Record<string, SessionUser>;
+};
+
+if (!gAuth.__DEV_CREDENTIALS__) {
+  gAuth.__DEV_CREDENTIALS__ = { ...INITIAL_DEV_CREDENTIALS };
+}
+export const DEV_CREDENTIALS: Record<string, DevUserCredential> = gAuth.__DEV_CREDENTIALS__;
+
+if (!gAuth.__DEV_SESSIONS__) {
+  gAuth.__DEV_SESSIONS__ = {};
+}
+export const DEV_SESSIONS: Record<string, SessionUser> = gAuth.__DEV_SESSIONS__;
 
 export function registerDevUser(
   user: SessionUser,
@@ -178,12 +206,17 @@ export function registerDevUser(
   passwordSalt?: string,
 ) {
   const emailKey = user.email.trim().toLowerCase();
+  const normalizedUser = {
+    ...user,
+    permissions: normalizePermissions(user.permissions, user.role, user.is_master),
+  };
   DEV_CREDENTIALS[emailKey] = {
-    user,
+    user: normalizedUser,
     password,
     passwordHash,
     passwordSalt,
   };
+  DEV_SESSIONS[`dev-sess-${emailKey}`] = normalizedUser;
 }
 
 // ── Server Function: getSessionUser ───────────────────────────────────────────
@@ -208,7 +241,7 @@ export const getSessionUser = createServerFn({ method: "GET" }).handler(
       const db = getDB();
       const row = await db
         .prepare(
-          `SELECT s.user_id, u.email, u.name, u.role, u.avatar_initials, COALESCE(u.is_master, 0) AS is_master
+          `SELECT s.user_id, u.email, u.name, u.role, u.avatar_initials, COALESCE(u.is_master, 0) AS is_master, u.permissions
            FROM auth_sessions s
            JOIN users u ON u.id = s.user_id
            WHERE s.id = ?1
@@ -224,6 +257,7 @@ export const getSessionUser = createServerFn({ method: "GET" }).handler(
           role:            string;
           avatar_initials: string | null;
           is_master:       number;
+          permissions:     string | null;
         }>();
 
       if (row) {
@@ -234,6 +268,7 @@ export const getSessionUser = createServerFn({ method: "GET" }).handler(
           role:            row.role as Role,
           avatar_initials: row.avatar_initials,
           is_master:       row.is_master,
+          permissions:     normalizePermissions(row.permissions, row.role as Role, row.is_master),
         };
       }
 
@@ -261,7 +296,7 @@ export const loginUser = createServerFn({ method: "POST" })
     try {
       const row = await db
         .prepare(
-          `SELECT id, email, name, role, avatar_initials, COALESCE(is_master, 0) AS is_master, password_hash, password_salt
+          `SELECT id, email, name, role, avatar_initials, COALESCE(is_master, 0) AS is_master, permissions, password_hash, password_salt
            FROM users
            WHERE email = ?1 AND is_active = 1
            LIMIT 1`,
@@ -271,6 +306,7 @@ export const loginUser = createServerFn({ method: "POST" })
           id: string; email: string; name: string; role: string;
           avatar_initials: string | null;
           is_master: number;
+          permissions: string | null;
           password_hash: string; password_salt: string;
         }>();
 
@@ -282,6 +318,7 @@ export const loginUser = createServerFn({ method: "POST" })
           role:            row.role as Role,
           avatar_initials: row.avatar_initials,
           is_master:       row.is_master,
+          permissions:     normalizePermissions(row.permissions, row.role as Role, row.is_master),
           password_hash:   row.password_hash,
           password_salt:   row.password_salt,
         };
@@ -336,6 +373,7 @@ export const loginUser = createServerFn({ method: "POST" })
       role:            user.role as Role,
       avatar_initials: user.avatar_initials,
       is_master:       user.is_master || 0,
+      permissions:     normalizePermissions(user.permissions, user.role, user.is_master),
     };
 
     DEV_SESSIONS[sessionId] = sessionUser;

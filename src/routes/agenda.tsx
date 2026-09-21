@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { requireAuth } from "@/lib/route-guard";
+import { requirePermission } from "@/lib/route-guard";
 import { useState, useEffect } from "react";
 import { useCurrentUser } from "@/lib/auth-context";
 import { AppLayout, PageHeader } from "@/components/app-layout";
@@ -25,7 +26,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/agenda")({
-  beforeLoad: requireAuth(),
+  beforeLoad: requirePermission("agenda:view"),
   head: () => ({
     meta: [
       { title: "Agenda de Sessões — Gestão Clínica ABA" },

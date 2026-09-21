@@ -10,6 +10,7 @@ import { z } from "zod";
 import { getDB, generateId } from "@/db/db";
 import { getSessionUser, generateSalt, pbkdf2Hash, registerDevUser } from "@/queries/auth";
 import { logAuditEvent } from "@/queries/notifications_audit";
+import { normalizePermissions, PRESETS } from "@/lib/permissions";
 
 export interface TeamMemberItem {
   id: string;
@@ -20,6 +21,7 @@ export interface TeamMemberItem {
   avatar_initials: string | null;
   is_active: number;
   is_master?: number;
+  permissions?: string[];
   change_password_required?: number;
   caseload: number;
   weeklyHours: number;
@@ -38,6 +40,7 @@ const INITIAL_DEV_TEAM: TeamMemberItem[] = [
     avatar_initials: "UM",
     is_active: 1,
     is_master: 1,
+    permissions: [...PRESETS.MASTER],
     caseload: 0,
     weeklyHours: 40,
     status: "Ativa",
@@ -50,6 +53,7 @@ const INITIAL_DEV_TEAM: TeamMemberItem[] = [
     registry: "CRP 06/12345",
     avatar_initials: "AB",
     is_active: 1,
+    permissions: [...PRESETS.THERAPIST],
     caseload: 8,
     weeklyHours: 32,
     status: "Ativa",
@@ -62,6 +66,7 @@ const INITIAL_DEV_TEAM: TeamMemberItem[] = [
     registry: "CRFa 2-98765",
     avatar_initials: "CM",
     is_active: 1,
+    permissions: [...PRESETS.THERAPIST],
     caseload: 6,
     weeklyHours: 24,
     status: "Ativa",
@@ -74,6 +79,7 @@ const INITIAL_DEV_TEAM: TeamMemberItem[] = [
     registry: "CRP 06/54321",
     avatar_initials: "DR",
     is_active: 1,
+    permissions: [...PRESETS.THERAPIST],
     caseload: 7,
     weeklyHours: 30,
     status: "Ativa",
@@ -86,6 +92,7 @@ const INITIAL_DEV_TEAM: TeamMemberItem[] = [
     registry: "CREFITO 3/11223",
     avatar_initials: "FS",
     is_active: 1,
+    permissions: [...PRESETS.THERAPIST],
     caseload: 5,
     weeklyHours: 20,
     status: "Ativa",
@@ -98,13 +105,20 @@ const INITIAL_DEV_TEAM: TeamMemberItem[] = [
     registry: "CRP 06/77889",
     avatar_initials: "MD",
     is_active: 1,
+    permissions: [...PRESETS.SUPERVISOR],
     caseload: 3,
     weeklyHours: 36,
     status: "Ativa",
   },
 ];
 
-export const DEV_TEAM_MEMBERS: TeamMemberItem[] = [...INITIAL_DEV_TEAM];
+const gTeam = globalThis as unknown as {
+  __DEV_TEAM_MEMBERS__?: TeamMemberItem[];
+};
+if (!gTeam.__DEV_TEAM_MEMBERS__) {
+  gTeam.__DEV_TEAM_MEMBERS__ = [...INITIAL_DEV_TEAM];
+}
+export const DEV_TEAM_MEMBERS: TeamMemberItem[] = gTeam.__DEV_TEAM_MEMBERS__;
 
 // ── Server Function: getClinicTeam ───────────────────────────────────────────
 
@@ -121,7 +135,7 @@ export const getClinicTeam = createServerFn({ method: "GET" }).handler(async () 
       .prepare(
         `SELECT
            u.id, u.email, u.name, u.role, u.registry, u.avatar_initials, u.is_active,
-           COALESCE(u.is_master, 0) AS is_master,
+           COALESCE(u.is_master, 0) AS is_master, u.permissions,
            COUNT(DISTINCT pt.patient_id) AS caseload
          FROM users u
          LEFT JOIN patient_therapist pt ON pt.therapist_id = u.id
@@ -138,6 +152,7 @@ export const getClinicTeam = createServerFn({ method: "GET" }).handler(async () 
         avatar_initials: string | null;
         is_active: number;
         is_master: number;
+        permissions: string | null;
         caseload: number;
       }>();
 
@@ -151,6 +166,7 @@ export const getClinicTeam = createServerFn({ method: "GET" }).handler(async () 
         avatar_initials: string | null;
         is_active: number;
         is_master: number;
+        permissions: string | null;
         caseload: number;
       }): TeamMemberItem => {
         const roleTyped = (r.role === "admin" ? "admin" : "therapist") as "admin" | "therapist";
@@ -163,6 +179,7 @@ export const getClinicTeam = createServerFn({ method: "GET" }).handler(async () 
           avatar_initials: r.avatar_initials,
           is_active: r.is_active,
           is_master: r.is_master,
+          permissions: normalizePermissions(r.permissions, roleTyped, r.is_master),
           caseload: r.caseload,
           weeklyHours: roleTyped === "admin" ? 40 : Math.min(40, Math.max(16, r.caseload * 4)),
           status: r.is_active === 1 ? "Ativa" : "Inativo",
@@ -190,6 +207,7 @@ const CreateTeamMemberInput = z.object({
   registry: z.string().optional(),
   role: z.enum(["therapist", "admin"]),
   isMaster: z.boolean().optional(),
+  permissions: z.array(z.string()).optional(),
   password: z.string().min(6, "A senha inicial deve ter no mínimo 6 caracteres"),
 });
 
@@ -236,13 +254,17 @@ export const createTeamMember = createServerFn({ method: "POST" })
       ? `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase()
       : names[0].slice(0, 2).toUpperCase();
 
+    const isMasterVal = data.role === "admin" && data.isMaster ? 1 : 0;
+    const assignedPermissions = normalizePermissions(data.permissions, data.role, isMasterVal);
+    const permissionsJson = JSON.stringify(assignedPermissions);
+
     // 3. Persistência no D1 com fallback de segurança
     try {
       await db
         .prepare(
           `INSERT INTO users
-             (id, email, name, role, password_hash, password_salt, registry, avatar_initials, is_active, change_password_required, is_master)
-           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 1, 1, ?9)`,
+             (id, email, name, role, password_hash, password_salt, registry, avatar_initials, is_active, change_password_required, is_master, permissions)
+           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, 1, 1, ?9, ?10)`,
         )
         .bind(
           newId,
@@ -253,7 +275,8 @@ export const createTeamMember = createServerFn({ method: "POST" })
           saltHex,
           data.registry?.trim() || null,
           avatar_initials,
-          data.role === "admin" && data.isMaster ? 1 : 0,
+          isMasterVal,
+          permissionsJson,
         )
         .run();
     } catch {
@@ -289,7 +312,8 @@ export const createTeamMember = createServerFn({ method: "POST" })
       registry: data.registry?.trim() || null,
       avatar_initials,
       is_active: 1,
-      is_master: data.role === "admin" && data.isMaster ? 1 : 0,
+      is_master: isMasterVal,
+      permissions: assignedPermissions,
       change_password_required: 1,
       caseload: 0,
       weeklyHours: data.role === "admin" ? 40 : 20,
@@ -304,7 +328,8 @@ export const createTeamMember = createServerFn({ method: "POST" })
         name: data.name.trim(),
         role: data.role,
         avatar_initials,
-        is_master: data.role === "admin" && data.isMaster ? 1 : 0,
+        is_master: isMasterVal,
+        permissions: assignedPermissions,
       },
       data.password,
       hashHex,
@@ -330,6 +355,7 @@ const UpdateTeamMemberInput = z.object({
   registry: z.string().optional(),
   role: z.enum(["therapist", "admin"]),
   isMaster: z.boolean().optional(),
+  permissions: z.array(z.string()).optional(),
 });
 
 export const updateTeamMember = createServerFn({ method: "POST" })
@@ -346,12 +372,16 @@ export const updateTeamMember = createServerFn({ method: "POST" })
       ? `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase()
       : names[0].slice(0, 2).toUpperCase();
 
+    const isMasterVal = data.role === "admin" && data.isMaster ? 1 : 0;
+    const assignedPermissions = normalizePermissions(data.permissions, data.role, isMasterVal);
+    const permissionsJson = JSON.stringify(assignedPermissions);
+
     await getDB()
       .prepare(
         `UPDATE users
          SET name = ?1, email = ?2, registry = ?3, role = ?4,
-             avatar_initials = ?5, is_master = ?6, updated_at = datetime('now')
-         WHERE id = ?7`,
+             avatar_initials = ?5, is_master = ?6, permissions = ?7, updated_at = datetime('now')
+         WHERE id = ?8`,
       )
       .bind(
         data.name.trim(),
@@ -359,7 +389,8 @@ export const updateTeamMember = createServerFn({ method: "POST" })
         data.registry?.trim() || null,
         data.role,
         avatar,
-        data.role === "admin" && data.isMaster ? 1 : 0,
+        isMasterVal,
+        permissionsJson,
         data.id,
       )
       .run();
@@ -373,7 +404,8 @@ export const updateTeamMember = createServerFn({ method: "POST" })
         registry: data.registry?.trim() || null,
         role: data.role,
         avatar_initials: avatar,
-        is_master: data.role === "admin" && data.isMaster ? 1 : 0,
+        is_master: isMasterVal,
+        permissions: assignedPermissions,
       };
     }
 
@@ -492,6 +524,7 @@ export const resetTeamMemberPassword = createServerFn({ method: "POST" })
           role: target?.role || member.role,
           avatar_initials: target?.avatar_initials || member.avatar_initials || null,
           is_master: target?.is_master || member.is_master || 0,
+          permissions: member.permissions || normalizePermissions(null, target?.role || member.role, target?.is_master || member.is_master || 0),
         },
         data.password,
         hashHex,

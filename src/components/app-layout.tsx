@@ -9,35 +9,36 @@ import { useState, useEffect } from "react";
 import { useCurrentUser } from "@/lib/auth-context";
 import { logoutUser } from "@/queries/auth";
 import { getUnreadNotificationCount } from "@/queries/notifications_audit";
+import { hasPermission, type PermissionSlug } from "@/lib/permissions";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import logo from "@/assets/logo-gize.png";
 
-type NavItem = { to: string; label: string; icon: typeof Home };
+type NavItem = { to: string; label: string; icon: typeof Home; permission?: PermissionSlug };
 
 const navByRole: Record<string, NavItem[]> = {
   therapist: [
     { to: "/",            label: "Hoje",         icon: Home },
-    { to: "/agenda",      label: "Agenda",        icon: CalendarDays },
-    { to: "/patients",    label: "Pacientes",     icon: Users },
-    { to: "/pei/p1",      label: "PEI",           icon: ClipboardCheck },
-    { to: "/therapist/payout", label: "Ganhos",   icon: DollarSign },
-    { to: "/reports",     label: "Relatórios",    icon: FileText },
-    { to: "/forum",       label: "Fórum",         icon: MessageSquare },
+    { to: "/agenda",      label: "Agenda",        icon: CalendarDays, permission: "agenda:view" },
+    { to: "/patients",    label: "Pacientes",     icon: Users,        permission: "patients:view" },
+    { to: "/pei/p1",      label: "PEI",           icon: ClipboardCheck, permission: "pei:view" },
+    { to: "/therapist/payout", label: "Ganhos",   icon: DollarSign,   permission: "financial:view" },
+    { to: "/reports",     label: "Relatórios",    icon: FileText,     permission: "reports:view" },
+    { to: "/forum",       label: "Fórum",         icon: MessageSquare, permission: "forum:access" },
     { to: "/notifications",label: "Notificações", icon: Bell },
   ],
   admin: [
     { to: "/admin",           label: "Dashboard",     icon: Home },
-    { to: "/admin/financial", label: "Financeiro",    icon: DollarSign },
-    { to: "/admin/audit",     label: "Auditoria LGPD",icon: ShieldCheck },
-    { to: "/admin/approvals", label: "Aprovações",    icon: ClipboardCheck },
-    { to: "/agenda",          label: "Agenda",        icon: CalendarDays },
-    { to: "/patients",        label: "Pacientes",     icon: Users },
-    { to: "/admin/team",      label: "Equipe",        icon: UserCog },
-    { to: "/admin/hours",     label: "Horas",         icon: Clock },
-    { to: "/reports",         label: "Relatórios",    icon: FileText },
-    { to: "/forum",           label: "Fórum",         icon: MessageSquare },
+    { to: "/admin/financial", label: "Financeiro",    icon: DollarSign,    permission: "financial:view" },
+    { to: "/admin/audit",     label: "Auditoria LGPD",icon: ShieldCheck,   permission: "audit:view" },
+    { to: "/admin/approvals", label: "Aprovações",    icon: ClipboardCheck, permission: "approvals:manage" },
+    { to: "/agenda",          label: "Agenda",        icon: CalendarDays,  permission: "agenda:view" },
+    { to: "/patients",        label: "Pacientes",     icon: Users,         permission: "patients:view" },
+    { to: "/admin/team",      label: "Equipe",        icon: UserCog,       permission: "team:view" },
+    { to: "/admin/hours",     label: "Horas",         icon: Clock,         permission: "hours:view" },
+    { to: "/reports",         label: "Relatórios",    icon: FileText,      permission: "reports:view" },
+    { to: "/forum",           label: "Fórum",         icon: MessageSquare, permission: "forum:access" },
     { to: "/notifications",   label: "Notificações",  icon: Bell },
   ],
   parent: [
@@ -62,7 +63,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const user     = useCurrentUser();
   const router   = useRouter();
   const role     = user?.role ?? "therapist";
-  const items    = navByRole[role] ?? [];
+  const rawItems = navByRole[role] ?? [];
+  const items    = rawItems.filter((it) => !it.permission || hasPermission(user, it.permission));
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const RoleIcon = roleIcon[role as keyof typeof roleIcon] ?? Stethoscope;
   const [loggingOut, setLoggingOut] = useState(false);

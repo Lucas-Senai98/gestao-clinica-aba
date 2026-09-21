@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { requireRole } from "@/lib/route-guard";
+import { requirePermission } from "@/lib/route-guard";
 import { useState, useEffect } from "react";
 import { AppLayout, PageHeader } from "@/components/app-layout";
 import { getPendingApprovals, updateApprovalStatus, type ApprovalItem } from "@/queries/approvals";
@@ -11,7 +12,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin/approvals")({
-  beforeLoad: requireRole("admin"),
+  beforeLoad: requirePermission("approvals:manage"),
   head: () => ({
     meta: [
       { title: "Aprovações pendentes — Supervisão | Gestão Clínica ABA" },

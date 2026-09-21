@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { requireRole } from "@/lib/route-guard";
+import { requirePermission } from "@/lib/route-guard";
 import { AppLayout, PageHeader } from "@/components/app-layout";
 import { getAuditLogs, type AuditLogItem } from "@/queries/notifications_audit";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,7 +20,7 @@ import { ShieldCheck, Lock, Search, RefreshCw, Loader2, Eye, FileEdit, FileDown,
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/audit")({
-  beforeLoad: requireRole("admin"),
+  beforeLoad: requirePermission("audit:view"),
   head: () => ({
     meta: [
       { title: "Trilha de Auditoria LGPD — Gestão Clínica ABA" },

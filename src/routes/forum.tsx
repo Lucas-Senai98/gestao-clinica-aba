@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { requireAuth } from "@/lib/route-guard";
+import { requirePermission } from "@/lib/route-guard";
 import { useCurrentUser } from "@/lib/auth-context";
 import { AppLayout, PageHeader } from "@/components/app-layout";
 import {
@@ -21,7 +22,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/forum")({
-  beforeLoad: requireAuth(),
+  beforeLoad: requirePermission("forum:access"),
   head: () => ({
     meta: [
       { title: "Fórum Clínico Interno — Gestão Clínica ABA" },
