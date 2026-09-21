@@ -8,6 +8,8 @@ import { getPatients } from "@/queries/patients";
 import type { PatientSummary } from "@/db/types";
 import {
   createClinicalReport,
+  updateClinicalReport,
+  toggleShareClinicalReport,
   deleteClinicalReport,
   getClinicalReports,
   updateClinicalReportStatus,
@@ -18,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +29,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { ReportPrintDialog, type ReportPrintData } from "@/components/report-print-dialog";
 import {
   FileText,
   Download,
@@ -42,6 +46,10 @@ import {
   Check,
   Send,
   FileEdit,
+  Printer,
+  Share2,
+  AlertCircle,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -51,7 +59,7 @@ export const Route = createFileRoute("/reports")({
   head: () => ({
     meta: [
       { title: "Relatórios clínicos — Gestão Clínica ABA" },
-      { name: "description", content: "Gere, edite, salve e emita relatórios clínicos persistentes." },
+      { name: "description", content: "Gere, edite, salve, envie ao paciente e imprima relatórios clínicos em PDF." },
     ],
   }),
   component: ReportsPage,
@@ -72,8 +80,12 @@ function ReportsPage() {
   const [content, setContent] = useState("");
   const [reports, setReports] = useState<ClinicalReportItem[]>([]);
   const [saving, setSaving] = useState(false);
+  const [shareWithPatient, setShareWithPatient] = useState(true);
+  const [editingReportId, setEditingReportId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [viewingReport, setViewingReport] = useState<ClinicalReportItem | null>(null);
+  const [printData, setPrintData] = useState<ReportPrintData | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -91,8 +103,8 @@ function ReportsPage() {
           setPatient(initialPatient);
         }
 
-        // Se o editor ainda não tem conteúdo, inicializa com o modelo atual
-        if (!content && initialPatient) {
+        // Se o editor ainda não tem conteúdo e não estamos editando rascunho, inicializa com o modelo atual
+        if (!content && initialPatient && !editingReportId) {
           const selectedP = pList.find((x) => x.id === initialPatient);
           setContent(getReportDefaultContent(template, selectedP));
         }
@@ -111,30 +123,45 @@ function ReportsPage() {
     const newContent = getReportDefaultContent(newTemplateId, p);
     setContent(newContent);
     const t = REPORT_TEMPLATES.find((x) => x.id === newTemplateId);
-    toast.info(`Modelo "${t?.name || "selecionado"}" carregado no editor para personalização.`);
+    toast.info(`Modelo "${t?.name || "selecionado"}" carregado no editor.`);
   };
 
   // Ao trocar de paciente
   const handlePatientChange = (newPatientId: string) => {
     setPatient(newPatientId);
-    const p = patientsList.find((x) => x.id === newPatientId);
-    // Atualiza o conteúdo com os dados do novo paciente mantendo o modelo
-    setContent(getReportDefaultContent(template, p));
+    if (!editingReportId) {
+      const p = patientsList.find((x) => x.id === newPatientId);
+      setContent(getReportDefaultContent(template, p));
+    }
   };
 
   // Restaurar modelo original
   const handleRestoreTemplate = () => {
     const p = patientsList.find((x) => x.id === patient);
     setContent(getReportDefaultContent(template, p));
+    setEditingReportId(null);
+    setEditingTitle("");
     toast.success("Estrutura padrão do modelo restaurada no editor.");
   };
 
   // Limpar conteúdo
   const handleClearContent = () => {
     setContent("");
+    setEditingReportId(null);
+    setEditingTitle("");
     toast.info("Editor limpo.");
   };
 
+  // Cancelar modo de edição de rascunho existente
+  const handleCancelEditing = () => {
+    setEditingReportId(null);
+    setEditingTitle("");
+    const p = patientsList.find((x) => x.id === patient);
+    setContent(getReportDefaultContent(template, p));
+    toast.info("Edição cancelada. Editor redefinido com o modelo atual.");
+  };
+
+  // Salvar (Rascunho ou Emitido)
   const create = async (status: "Rascunho" | "Emitido" = "Rascunho") => {
     const p = patientsList.find((x) => x.id === patient);
     const t = REPORT_TEMPLATES.find((x) => x.id === template);
@@ -151,22 +178,72 @@ function ReportsPage() {
 
     setSaving(true);
     try {
-      await createClinicalReport({
-        data: {
-          patientId: p.id,
-          templateId: t.id,
-          templateName: t.name,
-          title: `${t.name} — ${p.name}`,
-          content: body,
-          status,
-        },
-      });
-      toast.success(status === "Emitido" ? "Relatório emitido com sucesso!" : "Rascunho do relatório salvo com sucesso!");
+      const title = editingTitle || `${t.name} — ${p.name}`;
+      const isEmitted = status === "Emitido";
+      const isShared = isEmitted ? shareWithPatient : false;
+
+      if (editingReportId) {
+        // Atualiza o documento existente
+        await updateClinicalReport({
+          data: {
+            id: editingReportId,
+            title,
+            content: body,
+            status,
+            sharedWithPatient: isShared,
+          },
+        });
+        toast.success(
+          status === "Emitido"
+            ? `Relatório emitido com sucesso! ${isShared ? "Enviado para a família no Portal dos Pais." : ""}`
+            : "Rascunho atualizado com sucesso!",
+        );
+        setEditingReportId(null);
+        setEditingTitle("");
+      } else {
+        // Cria um novo documento
+        await createClinicalReport({
+          data: {
+            patientId: p.id,
+            templateId: t.id,
+            templateName: t.name,
+            title,
+            content: body,
+            status,
+            sharedWithPatient: isShared,
+          },
+        });
+        toast.success(
+          status === "Emitido"
+            ? `Relatório emitido com sucesso! ${isShared ? "Enviado para a família no Portal dos Pais." : ""}`
+            : "Rascunho do relatório salvo com sucesso!",
+        );
+      }
+
       load();
     } catch (err) {
       toast.error("Erro ao salvar relatório", { description: err instanceof Error ? err.message : "Erro" });
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Alternar compartilhamento com o paciente / família
+  const handleToggleShare = async (r: ClinicalReportItem, newSharedState: boolean) => {
+    try {
+      await toggleShareClinicalReport({
+        data: { id: r.id, sharedWithPatient: newSharedState },
+      });
+      if (newSharedState) {
+        toast.success("Relatório enviado e disponibilizado para a família no Portal dos Pais!");
+      } else {
+        toast.info("Compartilhamento com a família revogado. Documento restrito à equipe.");
+      }
+      load();
+    } catch (err) {
+      toast.error("Erro ao alterar compartilhamento", {
+        description: err instanceof Error ? err.message : "Erro",
+      });
     }
   };
 
@@ -200,21 +277,58 @@ function ReportsPage() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  // Carregar rascunho existente no editor para continuar editando
   const loadIntoEditor = (r: ClinicalReportItem) => {
     setContent(r.content);
     if (r.patientId) setPatient(r.patientId);
     if (r.templateId) setTemplate(r.templateId);
+    setEditingReportId(r.id);
+    setEditingTitle(r.title);
+    setShareWithPatient(r.sharedWithPatient);
     setViewingReport(null);
-    toast.success("Conteúdo do relatório carregado no editor para edição.");
+    toast.success(`Relatório "${r.title}" carregado para edição.`);
+  };
+
+  // Abrir modal oficial de impressão / PDF
+  const handleOpenPrintForCurrentEditor = () => {
+    const p = patientsList.find((x) => x.id === patient);
+    const t = REPORT_TEMPLATES.find((x) => x.id === template);
+    setPrintData({
+      title: editingTitle || `${t?.name || "Relatório Clínico"} — ${p?.name || "Paciente"}`,
+      content: content || getReportDefaultContent(template, p),
+      patient: p?.name,
+      patientDiagnosis: p?.diagnosis,
+      patientGuardian: p?.guardian,
+      author: currentUser?.name || "Marina Duarte (Supervisora)",
+      date: new Date().toLocaleDateString("pt-BR"),
+      status: editingReportId ? "Rascunho em Edição" : "Prévia de Impressão",
+      sharedWithPatient: shareWithPatient,
+    });
+  };
+
+  const handleOpenPrintForSaved = (r: ClinicalReportItem) => {
+    const p = patientsList.find((x) => x.id === r.patientId);
+    setPrintData({
+      title: r.title,
+      content: r.content,
+      patient: r.patient || p?.name,
+      patientDiagnosis: p?.diagnosis,
+      patientGuardian: p?.guardian,
+      author: r.author,
+      date: r.date,
+      status: r.status,
+      sharedWithPatient: r.sharedWithPatient,
+    });
   };
 
   const selectedTemplateObj = REPORT_TEMPLATES.find((x) => x.id === template);
+  const currentPatientObj = patientsList.find((x) => x.id === patient);
 
   return (
     <AppLayout>
       <PageHeader
         title="Relatórios clínicos"
-        subtitle="Selecione um modelo, personalize o texto completo e emita ou salve como rascunho."
+        subtitle="Gere, edite rascunhos, envie à família e emita documentos oficiais em PDF."
       />
 
       <div className="grid lg:grid-cols-[minmax(0,1fr)_340px] gap-4">
@@ -225,15 +339,40 @@ function ReportsPage() {
                 <CardTitle className="text-base flex items-center gap-2">
                   <FileEdit className="size-4 text-primary" /> Editor de relatório clínico
                 </CardTitle>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-xs bg-background font-normal">
-                    {selectedTemplateObj?.name || "Personalizado"}
-                  </Badge>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {editingReportId ? (
+                    <Badge variant="default" className="bg-amber-500 hover:bg-amber-600 text-white gap-1 text-xs">
+                      <FileEdit className="size-3" /> Editando documento salvo
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-xs bg-background font-normal">
+                      {selectedTemplateObj?.name || "Personalizado"}
+                    </Badge>
+                  )}
                 </div>
               </div>
               <CardDescription className="text-xs">
-                O modelo selecionado abaixo é totalmente editável. Você pode modificar, adicionar seções ou começar em branco.
+                O modelo selecionado abaixo é 100% editável. Você pode alterar qualquer texto, salvar como rascunho, emitir e imprimir em PDF.
               </CardDescription>
+
+              {/* Banner se estiver editando um relatório existente */}
+              {editingReportId && (
+                <div className="mt-2.5 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs flex items-center justify-between gap-2 text-amber-800 dark:text-amber-300">
+                  <span className="flex items-center gap-1.5 font-medium">
+                    <AlertCircle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                    Você está editando: &quot;{editingTitle}&quot;.
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs px-2 text-amber-800 dark:text-amber-300 hover:bg-amber-500/20"
+                    onClick={handleCancelEditing}
+                  >
+                    <X className="size-3 mr-1" /> Sair da edição
+                  </Button>
+                </div>
+              )}
             </CardHeader>
             <CardContent className="space-y-4 pt-4">
               <div className="grid sm:grid-cols-2 gap-3">
@@ -283,7 +422,17 @@ function ReportsPage() {
                   <span className="font-semibold text-foreground">{content.length}</span> caracteres •{" "}
                   <span className="font-semibold text-foreground">{content.split("\n").filter(Boolean).length}</span> parágrafos
                 </span>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs gap-1"
+                    onClick={handleOpenPrintForCurrentEditor}
+                    title="Visualizar impressão e gerar PDF deste relatório"
+                  >
+                    <Printer className="size-3 text-primary" /> Imprimir / PDF
+                  </Button>
                   <Button
                     type="button"
                     variant="outline"
@@ -318,13 +467,36 @@ function ReportsPage() {
                 />
               </div>
 
+              {/* Opção de envio ao paciente / família */}
+              <div className="p-3 rounded-lg border bg-primary/5 border-primary/20 flex items-start gap-2.5">
+                <Checkbox
+                  id="shareFamily"
+                  checked={shareWithPatient}
+                  onCheckedChange={(c) => setShareWithPatient(Boolean(c))}
+                  className="mt-0.5"
+                />
+                <div className="space-y-0.5">
+                  <label
+                    htmlFor="shareFamily"
+                    className="text-xs font-semibold text-foreground cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Share2 className="size-3.5 text-primary" />
+                    Enviar e disponibilizar para a família no Portal dos Pais
+                  </label>
+                  <p className="text-[11px] text-muted-foreground">
+                    Ao emitir, este relatório ficará visível e disponível para download/impressão direta para os responsáveis de{" "}
+                    <span className="font-semibold text-foreground">{currentPatientObj?.name || "este paciente"}</span>.
+                  </p>
+                </div>
+              </div>
+
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
                 <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
                   <Sparkles className="size-3.5 text-primary shrink-0" />
-                  Texto 100% editável. Clique na caixa acima e faça qualquer alteração necessária.
+                  Texto 100% editável. Salve como rascunho para continuar depois ou emita para oficializar.
                 </p>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                   <Button
                     variant="outline"
                     onClick={() => create("Rascunho")}
@@ -332,7 +504,7 @@ function ReportsPage() {
                     className="flex-1 sm:flex-none gap-1.5"
                   >
                     {saving ? <Loader2 className="size-4 animate-spin" /> : <FileText className="size-4" />}
-                    Salvar rascunho
+                    {editingReportId ? "Atualizar rascunho" : "Salvar rascunho"}
                   </Button>
                   <Button
                     onClick={() => create("Emitido")}
@@ -351,9 +523,14 @@ function ReportsPage() {
           <Card>
             <CardHeader className="pb-3 border-b bg-muted/10">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <FileText className="size-4 text-primary" /> Documentos emitidos e rascunhos
-                </CardTitle>
+                <div>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <FileText className="size-4 text-primary" /> Documentos emitidos e rascunhos
+                  </CardTitle>
+                  <CardDescription className="text-xs mt-0.5">
+                    Rascunhos salvos pela equipe e relatórios oficiais emitidos ou compartilhados com as famílias.
+                  </CardDescription>
+                </div>
                 <Badge variant="secondary" className="text-xs">
                   {reports.length} {reports.length === 1 ? "documento" : "documentos"}
                 </Badge>
@@ -373,7 +550,7 @@ function ReportsPage() {
                   {reports.map((r) => (
                     <div
                       key={r.id}
-                      className="px-4 sm:px-5 py-3.5 grid sm:grid-cols-[minmax(0,1fr)_auto] items-center gap-3 hover:bg-muted/30 transition-colors"
+                      className="px-4 sm:px-5 py-3.5 grid lg:grid-cols-[minmax(0,1fr)_auto] items-center gap-3 hover:bg-muted/30 transition-colors"
                     >
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -381,6 +558,15 @@ function ReportsPage() {
                           <Badge className={cn("text-[10px]", statusTone[r.status] || "bg-muted")}>
                             {r.status}
                           </Badge>
+                          {r.sharedWithPatient ? (
+                            <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] gap-1">
+                              <CheckCircle2 className="size-3 text-primary" /> Enviado à família
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                              Apenas equipe interna
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-xs text-muted-foreground truncate mt-0.5">
                           <span className="font-medium text-foreground">{r.patient}</span> • {r.author} • {r.date}
@@ -390,7 +576,18 @@ function ReportsPage() {
                         </p>
                       </div>
 
-                      <div className="flex items-center gap-1 shrink-0 self-end sm:self-center">
+                      <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 px-2.5 text-xs gap-1 text-primary hover:bg-primary/10"
+                          onClick={() => handleOpenPrintForSaved(r)}
+                          title="Imprimir ou gerar PDF deste relatório"
+                        >
+                          <Printer className="size-3.5" />
+                          <span>Imprimir / PDF</span>
+                        </Button>
+
                         <Button
                           size="sm"
                           variant="ghost"
@@ -401,6 +598,43 @@ function ReportsPage() {
                           <Eye className="size-3.5" />
                           <span className="hidden sm:inline">Visualizar</span>
                         </Button>
+
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 px-2 text-xs gap-1"
+                          onClick={() => loadIntoEditor(r)}
+                          title="Continuar editando este documento no editor"
+                        >
+                          <FileEdit className="size-3.5" />
+                          <span className="hidden sm:inline">Editar</span>
+                        </Button>
+
+                        {/* Botão de Enviar ou Desfazer Envio à família */}
+                        {r.sharedWithPatient ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 px-2 text-xs gap-1 text-muted-foreground hover:text-destructive"
+                            onClick={() => handleToggleShare(r, false)}
+                            title="Desfazer envio e remover acesso da família"
+                          >
+                            <Share2 className="size-3.5" />
+                            <span className="hidden xl:inline">Desfazer envio</span>
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 px-2 text-xs gap-1 text-primary border-primary/30 hover:bg-primary/10"
+                            onClick={() => handleToggleShare(r, true)}
+                            title="Enviar relatório para a família no Portal dos Pais"
+                          >
+                            <Send className="size-3.5" />
+                            <span className="hidden xl:inline">Enviar à família</span>
+                          </Button>
+                        )}
+
                         <Button
                           size="icon"
                           variant="outline"
@@ -410,6 +644,7 @@ function ReportsPage() {
                         >
                           <Download className="size-3.5" />
                         </Button>
+
                         {r.status !== "Emitido" && (
                           <Button
                             size="icon"
@@ -421,6 +656,7 @@ function ReportsPage() {
                             <CheckCircle2 className="size-3.5" />
                           </Button>
                         )}
+
                         {r.status !== "Arquivado" && (
                           <Button
                             size="icon"
@@ -432,6 +668,7 @@ function ReportsPage() {
                             <Archive className="size-3.5" />
                           </Button>
                         )}
+
                         {currentUser?.role === "admin" && (
                           <Button
                             size="icon"
@@ -465,7 +702,7 @@ function ReportsPage() {
             </CardHeader>
             <CardContent className="p-3 space-y-2">
               {REPORT_TEMPLATES.map((t) => {
-                const isSelected = template === t.id;
+                const isSelected = template === t.id && !editingReportId;
                 return (
                   <div
                     key={t.id}
@@ -474,7 +711,7 @@ function ReportsPage() {
                       "rounded-lg border p-3 cursor-pointer transition-all duration-150 relative group",
                       isSelected
                         ? "border-primary bg-primary/5 ring-1 ring-primary shadow-sm"
-                        : "border-border hover:border-primary/50 hover:bg-muted/30"
+                        : "border-border hover:border-primary/50 hover:bg-muted/30",
                     )}
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -505,14 +742,14 @@ function ReportsPage() {
           <Card className="bg-primary/5 border-primary/20">
             <CardContent className="p-4 space-y-2 text-xs">
               <p className="font-semibold text-foreground flex items-center gap-1.5">
-                <Sparkles className="size-3.5 text-primary" />
-                Como funciona a edição
+                <Printer className="size-3.5 text-primary" />
+                Impressão e PDF Oficial
               </p>
               <p className="text-muted-foreground leading-relaxed">
-                Ao selecionar um paciente e um modelo, o texto com a estrutura clínica completa é carregado no editor.
+                Você pode gerar um PDF oficial em papel timbrado com logomarca e campos de assinatura técnica clicando em <strong>Imprimir / PDF</strong>.
               </p>
               <p className="text-muted-foreground leading-relaxed">
-                Você pode livremente alterar frases, incluir dados de sessões, apagar itens que não se aplicam e salvar quando estiver concluído.
+                Marque a opção de <strong>Enviar à família</strong> para que os pais acessem o documento em tempo real no Portal dos Pais.
               </p>
             </CardContent>
           </Card>
@@ -534,7 +771,10 @@ function ReportsPage() {
             <DialogDescription className="text-xs">
               Paciente: <span className="font-medium text-foreground">{viewingReport?.patient}</span> • Autor:{" "}
               <span className="font-medium text-foreground">{viewingReport?.author}</span> • Data:{" "}
-              {viewingReport?.date}
+              {viewingReport?.date} •{" "}
+              <span className="font-medium text-primary">
+                {viewingReport?.sharedWithPatient ? "Compartilhado com a família" : "Apenas interno"}
+              </span>
             </DialogDescription>
           </DialogHeader>
 
@@ -553,7 +793,20 @@ function ReportsPage() {
               {copiedId === viewingReport?.id ? "Copiado!" : "Copiar texto"}
             </Button>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs text-primary border-primary/30 hover:bg-primary/10"
+                onClick={() => {
+                  if (viewingReport) {
+                    handleOpenPrintForSaved(viewingReport);
+                    setViewingReport(null);
+                  }
+                }}
+              >
+                <Printer className="size-3.5" /> Imprimir / PDF
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -567,12 +820,19 @@ function ReportsPage() {
                 className="gap-1.5 text-xs"
                 onClick={() => viewingReport && loadIntoEditor(viewingReport)}
               >
-                <FileEdit className="size-3.5" /> Carregar no editor
+                <FileEdit className="size-3.5" /> Editar no editor
               </Button>
             </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Impressão e PDF com Papel Timbrado Oficial */}
+      <ReportPrintDialog
+        open={!!printData}
+        onOpenChange={(open) => !open && setPrintData(null)}
+        report={printData}
+      />
     </AppLayout>
   );
 }
