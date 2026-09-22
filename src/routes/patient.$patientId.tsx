@@ -74,7 +74,9 @@ import {
   HelpCircle,
   Pencil,
   Ban,
+  Users,
 } from "lucide-react";
+import { PatientGuardiansManager } from "@/components/patient-guardians-manager";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -100,9 +102,12 @@ function PatientPEP() {
     id: string;
     name: string;
     diagnosis: string;
-    guardian_name?: string;
+    guardian_name?: string | null;
+    guardian_email?: string | null;
+    guardian_relation?: string | null;
     avatar_initials?: string | null;
-    birth_date?: string;
+    birth_date?: string | null;
+    [key: string]: any;
   } | null>(null);
 
   useEffect(() => {
@@ -195,6 +200,9 @@ function PatientPEP() {
           <TabsTrigger value="sessions" className="data-[state=active]:bg-background">
             Sessões
           </TabsTrigger>
+          <TabsTrigger value="guardians" className="data-[state=active]:bg-background">
+            <Users className="size-3.5 mr-1.5 text-primary" /> Responsáveis (Família)
+          </TabsTrigger>
         </TabsList>
 
         {/* TAB 1: CHECKLIST ABA (8 PASSOS) */}
@@ -214,6 +222,17 @@ function PatientPEP() {
 
         <TabsContent value="sessions">
           <SessionHistoryTab patientId={patient?.id || patientId} />
+        </TabsContent>
+
+        {/* TAB 5: RESPONSÁVEIS & PORTAL DA FAMÍLIA */}
+        <TabsContent value="guardians">
+          <PatientGuardiansManager
+            patientId={patient?.id || patientId}
+            patientName={pName}
+            defaultGuardianName={patient?.guardian_name || undefined}
+            defaultGuardianEmail={patient?.guardian_email || undefined}
+            defaultGuardianRelation={patient?.guardian_relation || undefined}
+          />
         </TabsContent>
       </Tabs>
     </AppLayout>

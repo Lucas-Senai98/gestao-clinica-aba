@@ -20,7 +20,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, UserPlus, Save, Loader2 } from "lucide-react";
+import { createAndLinkGuardian } from "@/queries/guardians";
+import {
+  ArrowLeft,
+  UserPlus,
+  Save,
+  Loader2,
+  Key,
+  Eye,
+  EyeOff,
+  Sparkles,
+  ShieldCheck,
+  Lock,
+} from "lucide-react";
 
 export const Route = createFileRoute("/patients/new")({
   beforeLoad: requireAuth(),
@@ -126,6 +138,19 @@ function NewPatient() {
   const [saving, setSaving] = useState(false);
   const [therapistsList, setTherapistsList] = useState<Array<{ id: string; name: string; specialty: string }>>([]);
 
+  // Estados para credenciais de acesso do responsável (Portal da Família)
+  const [createPortalAccess, setCreatePortalAccess] = useState(true);
+  const [guardianPassword, setGuardianPassword] = useState("Gz@Fam2026!");
+  const [showGuardianPassword, setShowGuardianPassword] = useState(false);
+
+  const generateRandomPassword = () => {
+    const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$";
+    let pass = "";
+    for (let i = 0; i < 8; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    setGuardianPassword(`Gz@${pass}26`);
+    toast.success("Nova senha aleatória gerada!");
+  };
+
   useEffect(() => {
     getClinicTeam()
       .then((team) => {
@@ -170,7 +195,7 @@ function NewPatient() {
 
     setSaving(true);
     try {
-      await createPatient({
+      const created = await createPatient({
         data: {
           name: form.name,
           birthDate: form.birthDate,
@@ -193,9 +218,32 @@ function NewPatient() {
       });
 
       setErrors({});
-      toast.success(`Paciente ${result.data.name} cadastrado com sucesso!`, {
+      toast.success(`Paciente ${created.name} cadastrado com sucesso!`, {
         description: "O paciente foi registrado com sucesso.",
       });
+
+      // Cria credenciais de acesso para o responsável se marcado
+      if (createPortalAccess && form.guardianEmail && guardianPassword) {
+        try {
+          await createAndLinkGuardian({
+            data: {
+              patientId: created.id,
+              name: form.guardianName,
+              email: form.guardianEmail,
+              password: guardianPassword,
+              relation: form.guardianRelation || "Responsável",
+            },
+          });
+          toast.success("Acesso do responsável criado no Portal da Família!", {
+            description: `Login liberado para ${form.guardianEmail}.`,
+          });
+        } catch (gErr) {
+          toast.warning("Paciente cadastrado, mas houve um erro ao criar o acesso do responsável", {
+            description: gErr instanceof Error ? gErr.message : "Erro ao vincular responsável",
+          });
+        }
+      }
+
       setForm(emptyForm);
       setSelectedTherapies([]);
       await navigate({ to: "/patients" });
@@ -371,6 +419,72 @@ function NewPatient() {
                   placeholder="Rua, número, bairro, cidade"
                 />
               </Field>
+            </div>
+
+            {/* Seção de Login do Responsável (Portal dos Pais) */}
+            <div className="sm:col-span-2 pt-3 border-t border-border/60 space-y-3">
+              <div className="flex items-start gap-2.5">
+                <Checkbox
+                  id="createPortalAccess"
+                  checked={createPortalAccess}
+                  onCheckedChange={(c) => setCreatePortalAccess(Boolean(c))}
+                  className="mt-0.5"
+                />
+                <div className="space-y-0.5">
+                  <Label
+                    htmlFor="createPortalAccess"
+                    className="text-xs font-semibold cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Key className="size-3.5 text-primary" />
+                    Criar acesso de login no Portal dos Pais para este responsável
+                  </Label>
+                  <p className="text-[11px] text-muted-foreground">
+                    Gera credenciais com perfil de responsável para que a família acompanhe as devolutivas diárias e relatórios clínicos deste paciente.
+                  </p>
+                </div>
+              </div>
+
+              {createPortalAccess && (
+                <div className="p-3.5 rounded-lg bg-primary/5 border border-primary/20 space-y-3">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="gpass" className="text-xs font-medium">
+                        Senha Inicial do Responsável *
+                      </Label>
+                      <button
+                        type="button"
+                        onClick={generateRandomPassword}
+                        className="text-[11px] text-primary hover:underline flex items-center gap-1"
+                      >
+                        <Sparkles className="size-3" /> Gerar Senha Aleatória
+                      </button>
+                    </div>
+
+                    <div className="relative">
+                      <Input
+                        id="gpass"
+                        type={showGuardianPassword ? "text" : "password"}
+                        value={guardianPassword}
+                        onChange={(e) => setGuardianPassword(e.target.value)}
+                        placeholder="Mínimo 6 caracteres"
+                        className="pr-9 font-mono text-xs bg-background"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowGuardianPassword(!showGuardianPassword)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {showGuardianPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                    <ShieldCheck className="size-3.5 text-primary shrink-0" />
+                    O login será o e-mail cadastrado acima. A senha será gravada com criptografia PBKDF2 no banco D1.
+                  </p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
