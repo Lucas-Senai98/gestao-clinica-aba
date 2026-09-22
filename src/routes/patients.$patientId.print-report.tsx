@@ -12,6 +12,8 @@ import logo from "@/assets/logo-gize.png";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { createClinicalReport } from "@/queries/reports";
+import { toast } from "sonner";
 import {
   Printer,
   FileDown,
@@ -24,6 +26,7 @@ import {
   TrendingUp,
   Activity,
   Heart,
+  Send,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -195,6 +198,8 @@ function PrintReportPage() {
     };
   }, [patientId, currentUser]);
 
+  const [sharing, setSharing] = useState(false);
+
   const handleTriggerPrint = () => {
     window.print();
   };
@@ -209,6 +214,47 @@ function PrintReportPage() {
     ? `${Math.floor((Date.now() - new Date(patient.birth_date).getTime()) / (365.25 * 24 * 3600 * 1000))} anos`
     : "Idade não informada";
 
+  const handleShareWithFamily = async () => {
+    if (!patient) return;
+    setSharing(true);
+    try {
+      const summaryText = `RELATÓRIO CLÍNICO OFICIAL DE EVOLUÇÃO ABA
+Paciente: ${patient.name}
+Diagnóstico: ${patient.diagnosis || "TEA"}
+Responsável: ${patient.guardian_name || "Família"}
+Data de Emissão: ${currentDateStr}
+
+1. CHECKLIST CLÍNICO ABA
+Passos concluídos: ${Object.values(checklist).filter((c) => c.done).length} de 8 passos
+
+2. REPERTÓRIO INICIAL E MARCOS DO DESENVOLVIMENTO
+Habilidades avaliadas: ${repertoire.length} marcos monitorados
+
+3. SÍNTESE CLÍNICA E RECOMENDAÇÕES
+Documento oficial consolidado e validado pela supervisão clínica ABA da Clínica GiZé's.`;
+
+      await createClinicalReport({
+        data: {
+          patientId: patient.id || patientId,
+          templateId: "pep-summary",
+          templateName: "Relatório de Evolução Clínica ABA (PEP Oficial)",
+          title: `Relatório de Evolução Clínica — ${patient.name}`,
+          content: summaryText,
+          status: "Emitido",
+          sharedWithPatient: true,
+        },
+      });
+
+      toast.success("Relatório oficial publicado e enviado para a família no Portal dos Pais!");
+    } catch (err) {
+      toast.error("Erro ao enviar relatório para a família", {
+        description: err instanceof Error ? err.message : "Erro",
+      });
+    } finally {
+      setSharing(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-100 print:bg-white text-slate-900 font-sans p-0 sm:p-6 print:p-0">
       {/* ── BARRA SUPERIOR DE AÇÕES (OCULTA NA IMPRESSÃO) ───────────────────── */}
@@ -220,6 +266,18 @@ function PrintReportPage() {
         </Button>
 
         <div className="flex items-center gap-2">
+          <Button
+            onClick={handleShareWithFamily}
+            disabled={sharing}
+            variant="outline"
+            size="sm"
+            className="gap-1.5 border-primary/30 text-primary hover:bg-primary/10"
+            title="Publicar e disponibilizar este relatório oficial diretamente para os pais no Portal da Família"
+          >
+            {sharing ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+            Enviar à Família (Portal dos Pais)
+          </Button>
+
           <Button onClick={handleTriggerPrint} size="sm" className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md">
             <Printer className="size-4 mr-1.5" /> Imprimir / Salvar em PDF
           </Button>

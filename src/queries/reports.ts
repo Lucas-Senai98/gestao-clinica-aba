@@ -1,8 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getDB, generateId, now } from "@/db/db";
-import { getSessionUser } from "@/queries/auth";
-import { logAuditEvent } from "@/queries/notifications_audit";
+import { getSessionUser, DEV_CREDENTIALS } from "@/queries/auth";
+import { logAuditEvent, sendNotificationHelper } from "@/queries/notifications_audit";
+import { DEV_PATIENTS, DEV_PATIENT_GUARDIAN } from "@/queries/patients";
 
 export interface ClinicalReportItem {
   id: string;
@@ -22,7 +23,7 @@ export interface ClinicalReportItem {
 
 // ── In-Memory Store de Desenvolvimento (Garante persistência imediata em dev e fallback) ──
 
-export const DEV_CLINICAL_REPORTS: ClinicalReportItem[] = [
+const INITIAL_DEV_CLINICAL_REPORTS: ClinicalReportItem[] = [
   {
     id: "rep-01",
     patientId: "p1",
@@ -139,6 +140,127 @@ A manutenção integral da carga horária prescrita é imprescindível para prev
   },
 ];
 
+const gReports = globalThis as unknown as {
+  __DEV_CLINICAL_REPORTS__?: ClinicalReportItem[];
+};
+if (!gReports.__DEV_CLINICAL_REPORTS__) {
+  gReports.__DEV_CLINICAL_REPORTS__ = [...INITIAL_DEV_CLINICAL_REPORTS];
+}
+export const DEV_CLINICAL_REPORTS: ClinicalReportItem[] = gReports.__DEV_CLINICAL_REPORTS__;
+
+/**
+ * Função interna para obter o nome real do paciente a partir do D1 ou do store local.
+ */
+async function getPatientDisplayName(patientId: string): Promise<string> {
+  try {
+    const db = getDB();
+    const row = await db
+      .prepare(`SELECT name FROM patients WHERE id = ?1`)
+      .bind(patientId)
+      .first<{ name: string }>();
+    if (row?.name) return row.name;
+  } catch {}
+
+  const devP = DEV_PATIENTS.find((p) => p.id === patientId);
+  if (devP?.name) return devP.name;
+
+  const names: Record<string, string> = {
+    p1: "Lucas Almeida",
+    p2: "Sofia Pereira",
+    p3: "Bento Oliveira",
+    p4: "Helena Costa",
+  };
+  return names[patientId] || "Paciente";
+}
+
+/**
+ * Dispara notificação in-app e publica card no feed da família (parent_feed)
+ * quando um relatório oficial for emitido ou compartilhado.
+ */
+async function notifyGuardiansOfClinicalReport(
+  patientId: string,
+  patientName: string,
+  reportTitle: string,
+  authorId: string,
+) {
+  const db = getDB();
+  const guardianIds = new Set<string>();
+
+  // 1. Busca IDs de responsáveis vinculados na tabela patient_guardian
+  try {
+    const links = await db
+      .prepare(`SELECT guardian_id FROM patient_guardian WHERE patient_id = ?1`)
+      .bind(patientId)
+      .all<{ guardian_id: string }>();
+    if (links?.results) {
+      for (const l of links.results) guardianIds.add(String(l.guardian_id));
+    }
+  } catch {}
+
+  // 2. Busca por e-mail do responsável no cadastro do paciente
+  try {
+    const pRows = await db
+      .prepare(`SELECT guardian_email FROM patients WHERE id = ?1`)
+      .bind(patientId)
+      .first<{ guardian_email: string | null }>();
+    if (pRows?.guardian_email) {
+      const uRows = await db
+        .prepare(`SELECT id FROM users WHERE LOWER(email) = ?1`)
+        .bind(pRows.guardian_email.toLowerCase().trim())
+        .first<{ id: string }>();
+      if (uRows?.id) guardianIds.add(uRows.id);
+    }
+  } catch {}
+
+  // 3. Busca no store DEV_PATIENT_GUARDIAN e DEV_PATIENTS
+  for (const l of DEV_PATIENT_GUARDIAN) {
+    if (l.patient_id === patientId) guardianIds.add(l.guardian_id);
+  }
+  const devPat = DEV_PATIENTS.find((p) => p.id === patientId);
+  if (devPat?.guardian_email) {
+    const emailKey = devPat.guardian_email.toLowerCase().trim();
+    if (DEV_CREDENTIALS[emailKey]?.user?.id) {
+      guardianIds.add(DEV_CREDENTIALS[emailKey].user.id);
+    }
+  }
+
+  // Fallbacks conhecidos se ainda não houver vínculo
+  if (guardianIds.size === 0) {
+    if (patientId === "p1") guardianIds.add("u-parent-01");
+    if (patientId === "p2") guardianIds.add("u-parent-02");
+  }
+
+  // 4. Envia notificação in-app para cada responsável vinculado
+  for (const gId of guardianIds) {
+    await sendNotificationHelper(
+      gId,
+      "📄 Relatório Clínico Oficial Emitido",
+      `O relatório "${reportTitle}" foi emitido para ${patientName} e já está disponível para visualização e download em PDF no Portal da Família.`,
+      "devolutiva",
+    ).catch(() => null);
+  }
+
+  // 5. Publica também uma publicação no feed da família (parent_feed)
+  const feedId = generateId();
+  try {
+    await db
+      .prepare(
+        `INSERT INTO parent_feed
+           (id, patient_id, author_id, title, body, mood, home_practices, published_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, 'ótimo', ?6, datetime('now'))`,
+      )
+      .bind(
+        feedId,
+        patientId,
+        authorId,
+        `📄 Relatório Clínico Oficial: ${reportTitle}`,
+        `A equipe multidisciplinar emitiu e disponibilizou um documento oficial de evolução clínica para ${patientName}. O documento está disponível na íntegra para consulta e emissão em PDF no Portal dos Pais.`,
+        "Recomendamos que a família consulte as diretrizes e recomendações clínicas presentes no documento.",
+      )
+      .run();
+  } catch {}
+}
+
 const ReportInput = z.object({
   id: z.string().optional(),
   patientId: z.string().min(1),
@@ -150,11 +272,14 @@ const ReportInput = z.object({
   sharedWithPatient: z.boolean().optional(),
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 1. LISTAR RELATÓRIOS CLÍNICOS
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const getClinicalReports = createServerFn({ method: "GET" })
   .validator(z.object({ patientId: z.string().optional() }).optional())
   .handler(async ({ data }) => {
     const user = await getSessionUser();
-    // Se não houver sessão ativa, usa fallback dev
     const currentUser = user || {
       id: "u-admin-01",
       name: "Marina Duarte",
@@ -162,9 +287,11 @@ export const getClinicalReports = createServerFn({ method: "GET" })
       email: "supervisora@gizeclinica.com.br",
     };
 
+    const db = getDB();
     let d1Rows: ClinicalReportItem[] = [];
+
     try {
-      const rows = await getDB()
+      const rows = await db
         .prepare(
           `SELECT
              r.id, r.patient_id, r.template_id, r.title, r.content, r.status,
@@ -178,7 +305,7 @@ export const getClinicalReports = createServerFn({ method: "GET" })
            LEFT JOIN users u ON u.id = r.author_id
            WHERE (?1 IS NULL OR r.patient_id = ?1)
            ORDER BY r.created_at DESC
-           LIMIT 80`,
+           LIMIT 100`,
         )
         .bind(data?.patientId ?? null)
         .all<Record<string, unknown>>();
@@ -194,7 +321,7 @@ export const getClinicalReports = createServerFn({ method: "GET" })
           content: String(r.content),
           author: String(r.author_name || "Profissional"),
           authorId: r.author_id ? String(r.author_id) : undefined,
-          date: String(r.created_at).slice(0, 10),
+          date: String(r.created_at || now()).slice(0, 10),
           status: (r.status as ClinicalReportItem["status"]) || "Rascunho",
           sharedWithPatient: Boolean(r.shared_with_patient),
           sharedAt: r.shared_at ? String(r.shared_at) : null,
@@ -204,7 +331,7 @@ export const getClinicalReports = createServerFn({ method: "GET" })
       // D1 indisponível ou tabela ainda não migrada; usa store local
     }
 
-    // Combina e deduplica com os itens da store em memória
+    // Combina e sincroniza itens da store em memória com os do banco
     const map = new Map<string, ClinicalReportItem>();
     for (const item of DEV_CLINICAL_REPORTS) {
       map.set(item.id, item);
@@ -215,24 +342,66 @@ export const getClinicalReports = createServerFn({ method: "GET" })
 
     let allReports = Array.from(map.values());
 
-    // Filtro por paciente se solicitado
+    // Filtro por paciente se solicitado pela equipe técnica
     if (data?.patientId) {
       allReports = allReports.filter((r) => r.patientId === data.patientId);
     }
 
-    // Se o usuário for responsável (parent), só pode visualizar relatórios emitidos e compartilhados com a família
+    // ── CONTROLE DE ACESSO DO RESPONSÁVEL (PARENT) ───────────────────────────
     if (currentUser.role === "parent") {
-      const email = currentUser.email.toLowerCase();
-      // Mariana Almeida é mãe de Lucas (p1); Rafael Pereira é pai de Sofia (p2)
-      let allowedPatientId = "p1";
-      if (email.includes("rafael") || currentUser.id === "u-parent-02") {
-        allowedPatientId = "p2";
+      const allowedPatientIds = new Set<string>();
+
+      // 1. Busca vínculos diretos em patient_guardian
+      try {
+        const links = await db
+          .prepare(`SELECT patient_id FROM patient_guardian WHERE guardian_id = ?1`)
+          .bind(currentUser.id)
+          .all<{ patient_id: string }>();
+        if (links?.results) {
+          for (const l of links.results) allowedPatientIds.add(String(l.patient_id));
+        }
+      } catch {}
+
+      // 2. Busca por e-mail cadastrado na tabela patients
+      const cleanEmail = currentUser.email.toLowerCase().trim();
+      try {
+        const byEmail = await db
+          .prepare(`SELECT id FROM patients WHERE LOWER(guardian_email) = ?1`)
+          .bind(cleanEmail)
+          .all<{ id: string }>();
+        if (byEmail?.results) {
+          for (const r of byEmail.results) allowedPatientIds.add(String(r.id));
+        }
+      } catch {}
+
+      // 3. Busca no store em memória DEV_PATIENT_GUARDIAN e DEV_PATIENTS
+      for (const l of DEV_PATIENT_GUARDIAN) {
+        if (l.guardian_id === currentUser.id || l.guardian_id.toLowerCase() === cleanEmail) {
+          allowedPatientIds.add(l.patient_id);
+        }
+      }
+      for (const p of DEV_PATIENTS) {
+        if (p.guardian_email?.toLowerCase().trim() === cleanEmail) {
+          allowedPatientIds.add(p.id);
+        }
       }
 
+      // 4. Fallback de desenvolvimento
+      if (allowedPatientIds.size === 0) {
+        if (cleanEmail.includes("mariana") || currentUser.id === "u-parent-01") {
+          allowedPatientIds.add("p1");
+        } else if (cleanEmail.includes("rafael") || currentUser.id === "u-parent-02") {
+          allowedPatientIds.add("p2");
+        }
+      }
+
+      // O responsável DEVE ver apenas relatórios dos seus filhos que estejam
+      // EMITIDOS e compartilhados com a família (sharedWithPatient = true)
       allReports = allReports.filter(
         (r) =>
-          r.patientId === allowedPatientId &&
-          (r.sharedWithPatient || r.status === "Emitido")
+          allowedPatientIds.has(r.patientId) &&
+          r.status === "Emitido" &&
+          Boolean(r.sharedWithPatient),
       );
     }
 
@@ -241,6 +410,10 @@ export const getClinicalReports = createServerFn({ method: "GET" })
 
     return allReports;
   });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 2. CRIAR RELATÓRIO CLÍNICO (Rascunho ou Emitido)
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const createClinicalReport = createServerFn({ method: "POST" })
   .validator((d: unknown) => ReportInput.parse(d))
@@ -263,16 +436,8 @@ export const createClinicalReport = createServerFn({ method: "POST" })
     const dateStr = new Date().toISOString().slice(0, 10);
     const timeStr = now();
 
-    // Mapeamento de nomes de pacientes conhecidos
-    const patientNames: Record<string, string> = {
-      p1: "Lucas Almeida",
-      p2: "Sofia Pereira",
-      p3: "Bento Oliveira",
-    };
-    const patientName = patientNames[data.patientId] || "Paciente";
+    const patientName = await getPatientDisplayName(data.patientId);
 
-    // Se já existir com esse ID na store (ex: edição de rascunho existente), atualiza
-    const existingIndex = DEV_CLINICAL_REPORTS.findIndex((r) => r.id === id);
     const reportItem: ClinicalReportItem = {
       id,
       patientId: data.patientId,
@@ -289,13 +454,15 @@ export const createClinicalReport = createServerFn({ method: "POST" })
       sharedAt: sharedWithPatient ? timeStr : null,
     };
 
+    // Atualiza store em memória
+    const existingIndex = DEV_CLINICAL_REPORTS.findIndex((r) => r.id === id);
     if (existingIndex >= 0) {
       DEV_CLINICAL_REPORTS[existingIndex] = reportItem;
     } else {
       DEV_CLINICAL_REPORTS.unshift(reportItem);
     }
 
-    // Persiste no SQLite / D1 se disponível
+    // Persiste no SQLite / D1
     try {
       const db = getDB();
       await db
@@ -316,14 +483,33 @@ export const createClinicalReport = createServerFn({ method: "POST" })
           sharedWithPatient ? timeStr : null,
         )
         .run();
-    } catch {
-      // Ignora erro em dev com mock
+    } catch (e) {
+      console.error("Erro ao persistir relatório no D1:", e);
     }
 
-    await logAuditEvent(currentUser.id, `SAVE_CLINICAL_REPORT_${data.status}`, "clinical_reports", data.patientId).catch(() => null);
+    // Se emitido e compartilhado com a família, notifica os pais e alimenta o feed
+    if (isEmitted && sharedWithPatient) {
+      await notifyGuardiansOfClinicalReport(
+        data.patientId,
+        patientName,
+        data.title,
+        currentUser.id,
+      ).catch(() => null);
+    }
+
+    await logAuditEvent(
+      currentUser.id,
+      `SAVE_CLINICAL_REPORT_${data.status}`,
+      "clinical_reports",
+      data.patientId,
+    ).catch(() => null);
 
     return { id, success: true };
   });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 3. ATUALIZAR RELATÓRIO CLÍNICO EXISTENTE
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const updateClinicalReport = createServerFn({ method: "POST" })
   .validator(
@@ -383,11 +569,34 @@ export const updateClinicalReport = createServerFn({ method: "POST" })
         .prepare(`UPDATE clinical_reports SET ${sets.join(", ")} WHERE id = ?${i}`)
         .bind(...binds)
         .run();
-    } catch {}
+    } catch (e) {
+      console.error("Erro ao atualizar relatório no D1:", e);
+    }
 
-    await logAuditEvent(currentUser.id, "UPDATE_CLINICAL_REPORT", "clinical_reports", item?.patientId).catch(() => null);
+    // Se passou a ser emitido e compartilhado com a família, dispara notificações
+    if (item && item.status === "Emitido" && item.sharedWithPatient) {
+      const pName = await getPatientDisplayName(item.patientId);
+      await notifyGuardiansOfClinicalReport(
+        item.patientId,
+        pName,
+        item.title,
+        currentUser.id,
+      ).catch(() => null);
+    }
+
+    await logAuditEvent(
+      currentUser.id,
+      "UPDATE_CLINICAL_REPORT",
+      "clinical_reports",
+      item?.patientId,
+    ).catch(() => null);
+
     return { ok: true };
   });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 4. COMPARTILHAR OU DESFAZER ENVIO DO RELATÓRIO COM A FAMÍLIA
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const toggleShareClinicalReport = createServerFn({ method: "POST" })
   .validator(z.object({ id: z.string(), sharedWithPatient: z.boolean() }))
@@ -418,7 +627,20 @@ export const toggleShareClinicalReport = createServerFn({ method: "POST" })
         )
         .bind(data.sharedWithPatient ? 1 : 0, data.sharedWithPatient ? now() : null, data.id)
         .run();
-    } catch {}
+    } catch (e) {
+      console.error("Erro ao alternar compartilhamento no D1:", e);
+    }
+
+    // Se compartilhado com a família, notifica os pais e alimenta o feed
+    if (data.sharedWithPatient && item) {
+      const pName = await getPatientDisplayName(item.patientId);
+      await notifyGuardiansOfClinicalReport(
+        item.patientId,
+        pName,
+        item.title,
+        currentUser.id,
+      ).catch(() => null);
+    }
 
     await logAuditEvent(
       currentUser.id,
@@ -429,6 +651,10 @@ export const toggleShareClinicalReport = createServerFn({ method: "POST" })
 
     return { ok: true, sharedWithPatient: data.sharedWithPatient };
   });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 5. ATUALIZAR STATUS DO RELATÓRIO
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const updateClinicalReportStatus = createServerFn({ method: "POST" })
   .validator(z.object({ id: z.string(), status: z.enum(["Rascunho", "Emitido", "Arquivado"]) }))
@@ -461,9 +687,29 @@ export const updateClinicalReportStatus = createServerFn({ method: "POST" })
         .run();
     } catch {}
 
-    await logAuditEvent(currentUser.id, `STATUS_CLINICAL_REPORT_${data.status}`, "clinical_reports", item?.patientId).catch(() => null);
+    if (data.status === "Emitido" && item) {
+      const pName = await getPatientDisplayName(item.patientId);
+      await notifyGuardiansOfClinicalReport(
+        item.patientId,
+        pName,
+        item.title,
+        currentUser.id,
+      ).catch(() => null);
+    }
+
+    await logAuditEvent(
+      currentUser.id,
+      `STATUS_CLINICAL_REPORT_${data.status}`,
+      "clinical_reports",
+      item?.patientId,
+    ).catch(() => null);
+
     return { ok: true };
   });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 6. EXCLUIR RELATÓRIO CLÍNICO
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const deleteClinicalReport = createServerFn({ method: "POST" })
   .validator(z.object({ id: z.string() }))
@@ -479,6 +725,12 @@ export const deleteClinicalReport = createServerFn({ method: "POST" })
       await getDB().prepare(`DELETE FROM clinical_reports WHERE id = ?1`).bind(data.id).run();
     } catch {}
 
-    await logAuditEvent(currentUser.id, "DELETE_CLINICAL_REPORT", "clinical_reports", removedItem?.patientId).catch(() => null);
+    await logAuditEvent(
+      currentUser.id,
+      "DELETE_CLINICAL_REPORT",
+      "clinical_reports",
+      removedItem?.patientId,
+    ).catch(() => null);
+
     return { ok: true };
   });

@@ -77,6 +77,7 @@ import {
   Users,
 } from "lucide-react";
 import { PatientGuardiansManager } from "@/components/patient-guardians-manager";
+import { PatientReportsTab } from "@/components/patient-reports-tab";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -200,6 +201,9 @@ function PatientPEP() {
           <TabsTrigger value="sessions" className="data-[state=active]:bg-background">
             Sessões
           </TabsTrigger>
+          <TabsTrigger value="reports" className="data-[state=active]:bg-background">
+            <FileText className="size-3.5 mr-1.5 text-primary" /> Relatórios Oficiais
+          </TabsTrigger>
           <TabsTrigger value="guardians" className="data-[state=active]:bg-background">
             <Users className="size-3.5 mr-1.5 text-primary" /> Responsáveis (Família)
           </TabsTrigger>
@@ -232,6 +236,16 @@ function PatientPEP() {
             defaultGuardianName={patient?.guardian_name || undefined}
             defaultGuardianEmail={patient?.guardian_email || undefined}
             defaultGuardianRelation={patient?.guardian_relation || undefined}
+          />
+        </TabsContent>
+
+        {/* TAB 6: RELATÓRIOS OFICIAIS & FAMÍLIA */}
+        <TabsContent value="reports">
+          <PatientReportsTab
+            patientId={patient?.id || patientId}
+            patientName={pName}
+            patientDiagnosis={pDiagnosis}
+            patientGuardian={pGuardian}
           />
         </TabsContent>
       </Tabs>

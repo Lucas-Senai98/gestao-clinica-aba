@@ -86,6 +86,7 @@ function ReportsPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [viewingReport, setViewingReport] = useState<ClinicalReportItem | null>(null);
   const [printData, setPrintData] = useState<ReportPrintData | null>(null);
+  const [filterPatientId, setFilterPatientId] = useState("all");
 
   const load = () => {
     setLoading(true);
@@ -195,7 +196,9 @@ function ReportsPage() {
         });
         toast.success(
           status === "Emitido"
-            ? `Relatório emitido com sucesso! ${isShared ? "Enviado para a família no Portal dos Pais." : ""}`
+            ? isShared
+              ? `Relatório emitido com sucesso e enviado para os responsáveis de ${p.name} no Portal dos Pais!`
+              : `Relatório emitido com sucesso (restrito à equipe clínica).`
             : "Rascunho atualizado com sucesso!",
         );
         setEditingReportId(null);
@@ -215,7 +218,9 @@ function ReportsPage() {
         });
         toast.success(
           status === "Emitido"
-            ? `Relatório emitido com sucesso! ${isShared ? "Enviado para a família no Portal dos Pais." : ""}`
+            ? isShared
+              ? `Relatório emitido com sucesso e enviado para os responsáveis de ${p.name} no Portal dos Pais!`
+              : `Relatório emitido com sucesso (restrito à equipe clínica).`
             : "Rascunho do relatório salvo com sucesso!",
         );
       }
@@ -235,9 +240,9 @@ function ReportsPage() {
         data: { id: r.id, sharedWithPatient: newSharedState },
       });
       if (newSharedState) {
-        toast.success("Relatório enviado e disponibilizado para a família no Portal dos Pais!");
+        toast.success(`Relatório oficial enviado e disponibilizado para a família de ${r.patient} no Portal dos Pais!`);
       } else {
-        toast.info("Compartilhamento com a família revogado. Documento restrito à equipe.");
+        toast.info("Compartilhamento revogado. O documento não está mais visível para a família.");
       }
       load();
     } catch (err) {
@@ -323,6 +328,8 @@ function ReportsPage() {
 
   const selectedTemplateObj = REPORT_TEMPLATES.find((x) => x.id === template);
   const currentPatientObj = patientsList.find((x) => x.id === patient);
+  const displayedReports =
+    filterPatientId === "all" ? reports : reports.filter((r) => r.patientId === filterPatientId);
 
   return (
     <AppLayout>
@@ -509,10 +516,10 @@ function ReportsPage() {
                   <Button
                     onClick={() => create("Emitido")}
                     disabled={!patient || saving}
-                    className="flex-1 sm:flex-none gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90"
+                    className="flex-1 sm:flex-none gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
                   >
                     {saving ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
-                    Emitir relatório
+                    {shareWithPatient ? "Emitir e Enviar à Família" : "Emitir relatório (Interno)"}
                   </Button>
                 </div>
               </div>
@@ -522,7 +529,7 @@ function ReportsPage() {
           {/* Histórico de Documentos Salvos/Emitidos */}
           <Card>
             <CardHeader className="pb-3 border-b bg-muted/10">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <CardTitle className="text-base flex items-center gap-2">
                     <FileText className="size-4 text-primary" /> Documentos emitidos e rascunhos
@@ -531,9 +538,24 @@ function ReportsPage() {
                     Rascunhos salvos pela equipe e relatórios oficiais emitidos ou compartilhados com as famílias.
                   </CardDescription>
                 </div>
-                <Badge variant="secondary" className="text-xs">
-                  {reports.length} {reports.length === 1 ? "documento" : "documentos"}
-                </Badge>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Select value={filterPatientId} onValueChange={setFilterPatientId}>
+                    <SelectTrigger className="h-8 text-xs w-[180px] bg-background">
+                      <SelectValue placeholder="Filtrar por paciente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os pacientes</SelectItem>
+                      {patientsList.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Badge variant="secondary" className="text-xs">
+                    {displayedReports.length} {displayedReports.length === 1 ? "documento" : "documentos"}
+                  </Badge>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="p-0">
@@ -541,13 +563,15 @@ function ReportsPage() {
                 <div className="p-8 text-center text-xs text-muted-foreground">
                   <Loader2 className="size-5 animate-spin mx-auto text-primary mb-2" /> Carregando relatórios...
                 </div>
-              ) : reports.length === 0 ? (
+              ) : displayedReports.length === 0 ? (
                 <div className="p-8 text-center text-xs text-muted-foreground italic">
-                  Nenhum documento salvo ainda. Escolha um modelo acima e salve seu primeiro relatório.
+                  {filterPatientId !== "all"
+                    ? "Nenhum documento encontrado para o paciente selecionado."
+                    : "Nenhum documento salvo ainda. Escolha um modelo acima e salve seu primeiro relatório."}
                 </div>
               ) : (
                 <div className="divide-y divide-border">
-                  {reports.map((r) => (
+                  {displayedReports.map((r) => (
                     <div
                       key={r.id}
                       className="px-4 sm:px-5 py-3.5 grid lg:grid-cols-[minmax(0,1fr)_auto] items-center gap-3 hover:bg-muted/30 transition-colors"
