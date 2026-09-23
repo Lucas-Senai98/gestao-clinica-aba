@@ -309,12 +309,12 @@ export const getTherapistPayout = createServerFn({ method: "GET" })
     const sessions = await db
       .prepare(
         `SELECT
-           dr.id, dr.session_date, dr.start_time, dr.end_time, dr.duration_min,
+           dr.id, dr.session_date, dr.session_time AS start_time, dr.session_time AS end_time, dr.duration_min,
            p.name AS patient_name
          FROM daily_records dr
          JOIN patients p ON p.id = dr.patient_id
          WHERE dr.therapist_id = ?1 AND strftime('%Y-%m', dr.session_date) = ?2
-         ORDER BY dr.session_date DESC, dr.start_time DESC`,
+         ORDER BY dr.session_date DESC, dr.session_time DESC`,
       )
       .bind(user.id, targetMonth)
       .all<{

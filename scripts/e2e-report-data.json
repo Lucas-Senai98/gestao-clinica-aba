@@ -1,0 +1,59 @@
+{
+  "jornada1": {
+    "name": "Admin / Supervisora",
+    "steps_passed": 5,
+    "steps_total": 5,
+    "details": [
+      "Passo 1.1: Admin master@gizeclinica.com.br autenticado com sucesso.",
+      "Passo 1.2: Terapeuta Terapeuta Teste cadastrado.",
+      "Passo 1.3: Paciente Gabriel Silva cadastrado.",
+      "Passo 1.4: Vínculo de responsável e taxas financeiras (R$ 180 / R$ 70) configuradas.",
+      "Passo 1.5: Terapeuta Teste vinculado a Gabriel Silva."
+    ]
+  },
+  "jornada2": {
+    "name": "Terapeuta Clínico",
+    "steps_passed": 5,
+    "steps_total": 5,
+    "details": [
+      "Passo 2.1: Login do Terapeuta Teste validado.",
+      "Passo 2.2: Sessão gravada com programas (80% e 60%) e comportamento (12 min Moderada).",
+      "Passo 2.3: PEP completo (Checklist 8 passos, 5 áreas de repertório, reforçadores e estereotipias).",
+      "Passo 2.4: Devolutiva enviada para a mãe e notificação disparada.",
+      "Passo 2.5: Tópico criado no fórum clínico interno com resposta da supervisão."
+    ]
+  },
+  "jornada3": {
+    "name": "Responsável / Família",
+    "steps_passed": 4,
+    "steps_total": 4,
+    "details": [
+      "Passo 3.1: Login da mãe validado com PBKDF2 e perfil 'parent'.",
+      "Passo 3.2: Isolamento perfeito (1 devolutivas, 100% de Gabriel Silva).",
+      "Passo 3.3: Badge de notificação ativo (1 não lidas).",
+      "Passo 3.4: RBAC de Segurança bloqueia com sucesso acesso a outros prontuários."
+    ]
+  },
+  "jornada4": {
+    "name": "Administração & Auditoria",
+    "steps_passed": 3,
+    "steps_total": 3,
+    "details": [
+      "Passo 4.1: Faturamento (R$ 360.00) e Repasse (R$ 140.00) acumulados com precisão matemática.",
+      "Passo 4.2: Emissão e exportação do laudo oficial em PDF registrada.",
+      "Passo 4.3: Trilha de auditoria LGPD 100% íntegra (6 tipos de eventos registrados)."
+    ]
+  },
+  "bugs_found": [],
+  "ux_friction": [
+    "Na Folha de Registro de Sessão (/session/$patientId), a adição de novos comportamentos requer clicar em 'Adicionar Comportamento' e rolar até o final da tela, o que em celulares pequenos pode causar perda de contexto da contagem de tentativas dos programas.",
+    "No cadastro de paciente (/patients/new), o formulário é extenso (dados clínicos, responsáveis e terapias). A divisão em etapas/stepper (Admissão -> Responsáveis -> Terapias) tornaria o preenchimento mais leve e evitaria rolagem excessiva.",
+    "No modal de Redefinição de Senha do Responsável, o feedback após salvar fecha o modal mas não exibe botão direto de 'Compartilhar via WhatsApp', o que seria muito útil para clínicas enviarem as credenciais imediatamente aos pais."
+  ],
+  "roadmap_suggestions": [
+    "Upload de Foto de Perfil do Paciente: permitir anexar foto real da criança no PEP para facilitar o reconhecimento visual por terapeutas recém-admitidos.",
+    "Alerta de Vencimento de Laudos Médicos e Pareceres do Convênio: sistema automatizado para avisar 30 dias antes que a autorização do convênio está expirando.",
+    "Gráficos Comparativos Interanuais: curva evolutiva comparando o ano corrente com o ano anterior em % de aquisição de metas do PEI.",
+    "Assinatura Eletrônica com Certificado Digital (ICP-Brasil): para os laudos oficiais e pareceres emitidos no botão de PDF, permitindo validação jurídica imediata perante convênios e escolas."
+  ]
+}
