@@ -59,7 +59,13 @@ const roleIcon = {
   parent:    Heart,
 } as const;
 
-export function AppLayout({ children }: { children: ReactNode }) {
+export function AppLayout({
+  children,
+  hideMobileNav,
+}: {
+  children: ReactNode;
+  hideMobileNav?: boolean;
+}) {
   const user     = useCurrentUser();
   const router   = useRouter();
   const role     = user?.role ?? "therapist";
@@ -193,39 +199,47 @@ export function AppLayout({ children }: { children: ReactNode }) {
       </header>
 
       {/* ── Main ─────────────────────────────────────────────────── */}
-      <main className="md:ml-64 px-4 md:px-8 py-5 md:py-7 pb-24 md:pb-10 max-w-6xl mx-auto md:mx-0">
+      <main
+        className={cn(
+          "md:ml-64 px-4 md:px-8 py-5 md:py-7 max-w-6xl mx-auto md:mx-0",
+          "md:ml-64 px-4 md:px-8 py-5 md:py-7 max-w-6xl",
+          hideMobileNav || pathname.startsWith("/session/") ? "pb-28 md:pb-10" : "pb-24 md:pb-10",
+        )}
+      >
         {children}
       </main>
 
-      {/* ── Mobile bottom tabs ────────────────────────────────────── */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-background/95 backdrop-blur border-t border-border">
-        <div className="grid grid-cols-5 gap-1 px-2 py-1.5">
-          {items.slice(0, 4).map((it) => {
-            const active = pathname === it.to || (it.to !== "/" && pathname.startsWith(it.to));
-            return (
-              <Link
-                key={it.to}
-                to={it.to}
-                className={cn(
-                  "flex flex-col items-center gap-0.5 py-1.5 rounded-lg text-[10px] font-medium transition-colors",
-                  active ? "text-primary" : "text-muted-foreground",
-                )}
-              >
-                <it.icon className={cn("size-5", active && "stroke-[2.3]")} />
-                {it.label}
-              </Link>
-            );
-          })}
-          <Link
-            to="/evolution/$patientId"
-            params={{ patientId: "p1" }}
-            className="flex flex-col items-center gap-0.5 py-1.5 rounded-lg text-[10px] font-medium text-muted-foreground"
-          >
-            <LineChart className="size-5" />
-            Evolução
-          </Link>
-        </div>
-      </nav>
+      {/* ── Mobile bottom tabs (ocultado se na tela de sessão ou se hideMobileNav = true) ── */}
+      {!(hideMobileNav || pathname.startsWith("/session/")) && (
+        <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-background/95 backdrop-blur border-t border-border">
+          <div className="grid grid-cols-5 gap-1 px-2 py-1.5">
+            {items.slice(0, 4).map((it) => {
+              const active = pathname === it.to || (it.to !== "/" && pathname.startsWith(it.to));
+              return (
+                <Link
+                  key={it.to}
+                  to={it.to}
+                  className={cn(
+                    "flex flex-col items-center gap-0.5 py-1.5 rounded-lg text-[10px] font-medium transition-colors",
+                    active ? "text-primary" : "text-muted-foreground",
+                  )}
+                >
+                  <it.icon className={cn("size-5", active && "stroke-[2.3]")} />
+                  {it.label}
+                </Link>
+              );
+            })}
+            <Link
+              to="/evolution/$patientId"
+              params={{ patientId: "p1" }}
+              className="flex flex-col items-center gap-0.5 py-1.5 rounded-lg text-[10px] font-medium text-muted-foreground"
+            >
+              <LineChart className="size-5" />
+              Evolução
+            </Link>
+          </div>
+        </nav>
+      )}
     </div>
   );
 }

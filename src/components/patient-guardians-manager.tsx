@@ -34,8 +34,15 @@ import {
   Check,
   Mail,
   Lock,
+  MessageCircle,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  openWhatsAppWeb,
+  formatGuardianCredentialsText,
+  buildWhatsAppWebUrl,
+} from "@/lib/whatsapp-credentials";
 
 interface PatientGuardiansManagerProps {
   patientId: string;
@@ -43,6 +50,7 @@ interface PatientGuardiansManagerProps {
   defaultGuardianName?: string;
   defaultGuardianEmail?: string;
   defaultGuardianRelation?: string;
+  guardianPhone?: string;
   onGuardiansChange?: () => void;
 }
 
@@ -61,6 +69,7 @@ export function PatientGuardiansManager({
   defaultGuardianName = "",
   defaultGuardianEmail = "",
   defaultGuardianRelation = "",
+  guardianPhone = "",
   onGuardiansChange,
 }: PatientGuardiansManagerProps) {
   const [guardians, setGuardians] = useState<PatientGuardianItem[]>([]);
@@ -81,6 +90,16 @@ export function PatientGuardiansManager({
   const [newPassword, setNewPassword] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [savingReset, setSavingReset] = useState(false);
+
+  // Modal de Envio via WhatsApp Web
+  const [whatsAppModalOpen, setWhatsAppModalOpen] = useState(false);
+  const [whatsAppModalData, setWhatsAppModalData] = useState<{
+    guardianName: string;
+    guardianEmail: string;
+    guardianPhone?: string;
+    password?: string;
+    isPasswordReset?: boolean;
+  } | null>(null);
 
   const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
 
@@ -122,14 +141,18 @@ export function PatientGuardiansManager({
       return;
     }
 
+    const createdPass = createPassword;
+    const createdName = createName.trim();
+    const createdEmail = createEmail.trim();
+
     setSavingCreate(true);
     try {
       const res = await createAndLinkGuardian({
         data: {
           patientId,
-          name: createName.trim(),
-          email: createEmail.trim(),
-          password: createPassword,
+          name: createdName,
+          email: createdEmail,
+          password: createdPass,
           relation: createRelation.trim(),
         },
       });
@@ -138,6 +161,16 @@ export function PatientGuardiansManager({
       setCreateOpen(false);
       load();
       onGuardiansChange?.();
+
+      // Abre diálogo para envio imediato pelo WhatsApp Web
+      setWhatsAppModalData({
+        guardianName: createdName,
+        guardianEmail: createdEmail,
+        guardianPhone: guardianPhone,
+        password: createdPass,
+        isPasswordReset: false,
+      });
+      setWhatsAppModalOpen(true);
     } catch (err) {
       toast.error("Erro ao cadastrar responsável", {
         description: err instanceof Error ? err.message : "Erro no servidor",
@@ -162,12 +195,17 @@ export function PatientGuardiansManager({
       return;
     }
 
+    const updatedPass = newPassword;
+    const gName = targetGuardian.name;
+    const gEmail = targetGuardian.email;
+    const gPhone = targetGuardian.phone || guardianPhone;
+
     setSavingReset(true);
     try {
       const res = await updateGuardianPassword({
         data: {
           guardianId: targetGuardian.guardianId,
-          newPassword,
+          newPassword: updatedPass,
           patientId,
         },
       });
@@ -175,6 +213,16 @@ export function PatientGuardiansManager({
       toast.success(res.message);
       setResetOpen(false);
       setTargetGuardian(null);
+
+      // Abre diálogo para envio imediato pelo WhatsApp Web
+      setWhatsAppModalData({
+        guardianName: gName,
+        guardianEmail: gEmail,
+        guardianPhone: gPhone,
+        password: updatedPass,
+        isPasswordReset: true,
+      });
+      setWhatsAppModalOpen(true);
     } catch (err) {
       toast.error("Erro ao redefinir senha", {
         description: err instanceof Error ? err.message : "Erro no servidor",
@@ -303,6 +351,27 @@ export function PatientGuardiansManager({
                   </div>
 
                   <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 px-2.5 text-xs gap-1.5 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                      onClick={() => {
+                        openWhatsAppWeb({
+                          guardianName: g.name,
+                          patientName,
+                          guardianEmail: g.email,
+                          guardianPhone: g.phone || guardianPhone,
+                          password: "",
+                          isPasswordReset: false,
+                        });
+                        toast.success("Abrindo WhatsApp Web...");
+                      }}
+                      title="Enviar dados de acesso via WhatsApp Web"
+                    >
+                      <MessageCircle className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                      <span className="hidden sm:inline">WhatsApp Web</span>
+                    </Button>
+
                     <Button
                       size="sm"
                       variant="outline"
@@ -513,6 +582,117 @@ export function PatientGuardiansManager({
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL 3: COMPARTILHAMENTO VIA WHATSAPP WEB */}
+      <Dialog open={whatsAppModalOpen} onOpenChange={setWhatsAppModalOpen}>
+        <DialogContent className="max-w-md">
+          {whatsAppModalData && (
+            <div className="space-y-4">
+              <DialogHeader>
+                <div className="size-12 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 grid place-items-center mb-1">
+                  <MessageCircle className="size-6" />
+                </div>
+                <DialogTitle className="text-base font-semibold text-foreground">
+                  {whatsAppModalData.isPasswordReset
+                    ? "Nova Senha Gerada com Sucesso!"
+                    : "Acesso da Família Criado com Sucesso!"}
+                </DialogTitle>
+                <DialogDescription className="text-xs">
+                  Envie as credenciais de acesso diretamente para o WhatsApp do responsável.
+                </DialogDescription>
+              </DialogHeader>
+
+              {/* Card com os dados gerados */}
+              <div className="rounded-xl border border-border bg-muted/30 p-3.5 space-y-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Responsável:</span>
+                  <span className="font-semibold text-foreground">{whatsAppModalData.guardianName}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Paciente:</span>
+                  <span className="font-semibold text-foreground">{patientName}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">E-mail (Login):</span>
+                  <span className="font-mono text-foreground font-medium">{whatsAppModalData.guardianEmail}</span>
+                </div>
+                {whatsAppModalData.password && (
+                  <div className="flex items-center justify-between bg-primary/10 p-2 rounded-lg border border-primary/20">
+                    <span className="text-primary font-medium flex items-center gap-1">
+                      <Key className="size-3.5" /> Senha:
+                    </span>
+                    <span className="font-mono font-bold text-primary text-sm select-all">
+                      {whatsAppModalData.password}
+                    </span>
+                  </div>
+                )}
+                {whatsAppModalData.guardianPhone && (
+                  <div className="flex items-center justify-between text-muted-foreground pt-1 border-t border-border/50">
+                    <span>Telefone Destino:</span>
+                    <span className="font-mono text-foreground">{whatsAppModalData.guardianPhone}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Botões de Ação */}
+              <div className="space-y-2 pt-1">
+                <Button
+                  type="button"
+                  className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold flex items-center justify-center gap-2 shadow-sm"
+                  onClick={() => {
+                    openWhatsAppWeb({
+                      guardianName: whatsAppModalData.guardianName,
+                      patientName,
+                      guardianEmail: whatsAppModalData.guardianEmail,
+                      guardianPhone: whatsAppModalData.guardianPhone,
+                      password: whatsAppModalData.password,
+                      isPasswordReset: whatsAppModalData.isPasswordReset,
+                    });
+                    toast.success("WhatsApp Web aberto em uma nova guia!");
+                  }}
+                >
+                  <MessageCircle className="size-4" />
+                  Enviar Credenciais pelo WhatsApp Web
+                  <ExternalLink className="size-3.5 ml-auto opacity-70" />
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full h-9 text-xs gap-1.5"
+                  onClick={() => {
+                    const text = formatGuardianCredentialsText({
+                      guardianName: whatsAppModalData.guardianName,
+                      patientName,
+                      guardianEmail: whatsAppModalData.guardianEmail,
+                      guardianPhone: whatsAppModalData.guardianPhone,
+                      password: whatsAppModalData.password,
+                      isPasswordReset: whatsAppModalData.isPasswordReset,
+                    });
+                    navigator.clipboard.writeText(text);
+                    toast.success("Mensagem copiada para a área de transferência!");
+                  }}
+                >
+                  <Copy className="size-3.5" />
+                  Copiar Mensagem Formatada
+                </Button>
+              </div>
+
+              <DialogFooter className="pt-2 border-t">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-xs text-muted-foreground hover:text-foreground"
+                  onClick={() => setWhatsAppModalOpen(false)}
+                >
+                  Concluir
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </Card>

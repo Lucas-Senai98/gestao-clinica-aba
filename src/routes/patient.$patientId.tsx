@@ -236,6 +236,7 @@ function PatientPEP() {
             defaultGuardianName={patient?.guardian_name || undefined}
             defaultGuardianEmail={patient?.guardian_email || undefined}
             defaultGuardianRelation={patient?.guardian_relation || undefined}
+            guardianPhone={patient?.guardian_phone || undefined}
           />
         </TabsContent>
 
