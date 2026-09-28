@@ -58,6 +58,40 @@ async function requireAdminOrTherapist() {
   return user;
 }
 
+async function assertAppointmentReferences(
+  db: ReturnType<typeof getDB>,
+  data: z.infer<typeof AppointmentInput>,
+) {
+  const patient = await db
+    .prepare(`SELECT id FROM patients WHERE id = ?1 LIMIT 1`)
+    .bind(data.patientId)
+    .first<{ id: string }>();
+
+  if (!patient) {
+    throw new Error(
+      "Paciente selecionado não foi encontrado no banco. Recarregue a agenda e selecione um paciente ativo.",
+    );
+  }
+
+  const therapist = await db
+    .prepare(
+      `SELECT id
+       FROM users
+       WHERE id = ?1
+         AND role = 'therapist'
+         AND is_active = 1
+       LIMIT 1`,
+    )
+    .bind(data.therapistId)
+    .first<{ id: string }>();
+
+  if (!therapist) {
+    throw new Error(
+      "Profissional selecionado não foi encontrado no banco. Recarregue a agenda e selecione um terapeuta ativo.",
+    );
+  }
+}
+
 export const getAppointments = createServerFn({ method: "GET" })
   .validator(z.object({ date: z.string().optional() }).optional())
   .handler(async ({ data }) => {
@@ -107,6 +141,7 @@ export const saveAppointment = createServerFn({ method: "POST" })
     const user = await requireAdminOrTherapist();
     const db = getDB();
     const scheduledAt = `${data.date} ${data.time}:00`;
+    await assertAppointmentReferences(db, data);
 
     if (data.id) {
       await db
