@@ -101,10 +101,14 @@ function Agenda() {
     : team.filter((m) => m.role === "therapist" && m.is_active === 1);
 
   const openNew = () => {
+    const defaultTherapistId = currentUser?.role === "therapist"
+      ? currentUser.id
+      : therapists[0]?.id || "";
+
     setForm({
       ...emptyForm(selectedDate),
       patientId: patients[0]?.id || "",
-      therapistId: therapists[0]?.id || currentUser?.id || "",
+      therapistId: defaultTherapistId,
     });
     setShowForm(true);
   };
