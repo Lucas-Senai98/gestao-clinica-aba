@@ -289,3 +289,30 @@ export interface FinancialSummaryKPIs {
   overdueCount: number;
   overdueTotal: number;
 }
+
+export type CashClosingStatus = "draft" | "closed" | "reopened";
+
+export interface DbCashClosing {
+  id: string;
+  period_month: string;
+  closed_by: string | null;
+  opening_balance: number;
+  total_inflows: number;
+  total_outflows: number;
+  expected_balance: number;
+  counted_balance: number;
+  difference: number;
+  pending_receivables: number;
+  pending_payables: number;
+  overdue_total: number;
+  entries_count: number;
+  notes: string | null;
+  status: CashClosingStatus;
+  closed_at: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CashClosingWithUser extends DbCashClosing {
+  closed_by_name?: string | null;
+}

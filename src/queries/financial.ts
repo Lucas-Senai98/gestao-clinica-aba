@@ -18,6 +18,7 @@ import type {
   FinancialPaymentMethod,
   FinancialEntryWithRelations,
   FinancialSummaryKPIs,
+  CashClosingWithUser,
 } from "@/db/types";
 
 
@@ -692,12 +693,18 @@ export const DEV_FINANCIAL_ENTRIES: FinancialEntryWithRelations[] = [
   },
 ];
 
+export const DEV_CASH_CLOSINGS: CashClosingWithUser[] = [];
+
 const FinancialEntriesFilterInput = z.object({
   type: z.enum(["receivable", "payable"]).optional(),
   status: z.enum(["pending", "completed", "overdue", "cancelled"]).optional(),
   month: z.string().optional(), // "YYYY-MM"
   search: z.string().optional(),
 });
+
+function roundMoney(value: number) {
+  return Math.round(value * 100) / 100;
+}
 
 /**
  * Busca listagem de lançamentos (Contas a Pagar e Receber) com D1 e fallback dev
@@ -834,6 +841,251 @@ export const getFinancialSummaryKPIs = createServerFn({ method: "GET" })
       overdueCount,
       overdueTotal,
     };
+  });
+
+const CashClosingInput = z.object({
+  month: z.string().regex(/^\d{4}-\d{2}$/),
+});
+
+const SaveCashClosingInput = CashClosingInput.extend({
+  openingBalance: z.number().default(0),
+  countedBalance: z.number(),
+  notes: z.string().optional().nullable(),
+});
+
+function calculateCashClosing(entries: FinancialEntryWithRelations[], openingBalance: number, countedBalance: number) {
+  let totalInflows = 0;
+  let totalOutflows = 0;
+  let pendingReceivables = 0;
+  let pendingPayables = 0;
+  let overdueTotal = 0;
+
+  for (const entry of entries) {
+    const amount = Number(entry.amount) || 0;
+
+    if (entry.status === "completed") {
+      if (entry.type === "receivable") totalInflows += amount;
+      if (entry.type === "payable") totalOutflows += amount;
+    }
+
+    if (entry.status === "pending" || entry.status === "overdue") {
+      if (entry.type === "receivable") pendingReceivables += amount;
+      if (entry.type === "payable") pendingPayables += amount;
+    }
+
+    if (entry.status === "overdue") {
+      overdueTotal += amount;
+    }
+  }
+
+  const expectedBalance = roundMoney(openingBalance + totalInflows - totalOutflows);
+  const counted = roundMoney(countedBalance);
+
+  return {
+    totalInflows: roundMoney(totalInflows),
+    totalOutflows: roundMoney(totalOutflows),
+    pendingReceivables: roundMoney(pendingReceivables),
+    pendingPayables: roundMoney(pendingPayables),
+    overdueTotal: roundMoney(overdueTotal),
+    expectedBalance,
+    countedBalance: counted,
+    difference: roundMoney(counted - expectedBalance),
+    entriesCount: entries.length,
+  };
+}
+
+export const getCashClosingOverview = createServerFn({ method: "GET" })
+  .validator((d: unknown) => CashClosingInput.parse(d))
+  .handler(async ({ data }) => {
+    const user = await getSessionUser();
+    if (!user) throw new Error("Sessão expirada.");
+    if (user.role !== "admin") throw new Error("Apenas administradores podem acessar fechamento de caixa.");
+
+    const db = getDB();
+    const entries = await getFinancialEntries({ data: { month: data.month } });
+    const preview = calculateCashClosing(entries, 0, 0);
+
+    let closing: CashClosingWithUser | null = null;
+    let history: CashClosingWithUser[] = [];
+
+    try {
+      const row = await db
+        .prepare(
+          `SELECT cc.*, u.name AS closed_by_name
+           FROM cash_closings cc
+           LEFT JOIN users u ON u.id = cc.closed_by
+           WHERE cc.period_month = ?1
+           LIMIT 1`,
+        )
+        .bind(data.month)
+        .first<CashClosingWithUser>();
+
+      closing = row
+        ? {
+            ...row,
+            opening_balance: Number(row.opening_balance),
+            total_inflows: Number(row.total_inflows),
+            total_outflows: Number(row.total_outflows),
+            expected_balance: Number(row.expected_balance),
+            counted_balance: Number(row.counted_balance),
+            difference: Number(row.difference),
+            pending_receivables: Number(row.pending_receivables),
+            pending_payables: Number(row.pending_payables),
+            overdue_total: Number(row.overdue_total),
+            entries_count: Number(row.entries_count),
+          }
+        : null;
+
+      const rows = await db
+        .prepare(
+          `SELECT cc.*, u.name AS closed_by_name
+           FROM cash_closings cc
+           LEFT JOIN users u ON u.id = cc.closed_by
+           ORDER BY cc.period_month DESC
+           LIMIT 12`,
+        )
+        .all<CashClosingWithUser>();
+
+      history = (rows.results || []).map((item) => ({
+        ...item,
+        opening_balance: Number(item.opening_balance),
+        total_inflows: Number(item.total_inflows),
+        total_outflows: Number(item.total_outflows),
+        expected_balance: Number(item.expected_balance),
+        counted_balance: Number(item.counted_balance),
+        difference: Number(item.difference),
+        pending_receivables: Number(item.pending_receivables),
+        pending_payables: Number(item.pending_payables),
+        overdue_total: Number(item.overdue_total),
+        entries_count: Number(item.entries_count),
+      }));
+    } catch {
+      closing = DEV_CASH_CLOSINGS.find((item) => item.period_month === data.month) || null;
+      history = [...DEV_CASH_CLOSINGS].sort((a, b) => b.period_month.localeCompare(a.period_month)).slice(0, 12);
+    }
+
+    return {
+      month: data.month,
+      preview,
+      closing,
+      history,
+      entries,
+    };
+  });
+
+export const saveCashClosing = createServerFn({ method: "POST" })
+  .validator((d: unknown) => SaveCashClosingInput.parse(d))
+  .handler(async ({ data }) => {
+    const user = await getSessionUser();
+    if (!user) throw new Error("Sessão expirada.");
+    if (user.role !== "admin") throw new Error("Apenas administradores podem fechar caixa.");
+
+    const db = getDB();
+    const entries = await getFinancialEntries({ data: { month: data.month } });
+    const totals = calculateCashClosing(entries, data.openingBalance, data.countedBalance);
+    const currentDate = now();
+    const existingDev = DEV_CASH_CLOSINGS.find((item) => item.period_month === data.month);
+    const id = existingDev?.id || `cc-${generateId().slice(0, 8)}`;
+
+    try {
+      const existing = await db
+        .prepare(`SELECT id FROM cash_closings WHERE period_month = ?1 LIMIT 1`)
+        .bind(data.month)
+        .first<{ id: string }>();
+
+      if (existing) {
+        await db
+          .prepare(
+            `UPDATE cash_closings
+             SET closed_by = ?1, opening_balance = ?2, total_inflows = ?3,
+                 total_outflows = ?4, expected_balance = ?5, counted_balance = ?6,
+                 difference = ?7, pending_receivables = ?8, pending_payables = ?9,
+                 overdue_total = ?10, entries_count = ?11, notes = ?12,
+                 status = 'closed', closed_at = ?13, updated_at = ?14
+             WHERE period_month = ?15`,
+          )
+          .bind(
+            user.id,
+            roundMoney(data.openingBalance),
+            totals.totalInflows,
+            totals.totalOutflows,
+            totals.expectedBalance,
+            totals.countedBalance,
+            totals.difference,
+            totals.pendingReceivables,
+            totals.pendingPayables,
+            totals.overdueTotal,
+            totals.entriesCount,
+            data.notes || null,
+            currentDate,
+            currentDate,
+            data.month,
+          )
+          .run();
+      } else {
+        await db
+          .prepare(
+            `INSERT INTO cash_closings (
+               id, period_month, closed_by, opening_balance, total_inflows, total_outflows,
+               expected_balance, counted_balance, difference, pending_receivables,
+               pending_payables, overdue_total, entries_count, notes, status,
+               closed_at, created_at, updated_at
+             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, 'closed', ?15, ?16, ?17)`,
+          )
+          .bind(
+            id,
+            data.month,
+            user.id,
+            roundMoney(data.openingBalance),
+            totals.totalInflows,
+            totals.totalOutflows,
+            totals.expectedBalance,
+            totals.countedBalance,
+            totals.difference,
+            totals.pendingReceivables,
+            totals.pendingPayables,
+            totals.overdueTotal,
+            totals.entriesCount,
+            data.notes || null,
+            currentDate,
+            currentDate,
+            currentDate,
+          )
+          .run();
+      }
+    } catch {
+      // Fallback dev em memória
+    }
+
+    const closing: CashClosingWithUser = {
+      id,
+      period_month: data.month,
+      closed_by: user.id,
+      closed_by_name: user.name,
+      opening_balance: roundMoney(data.openingBalance),
+      total_inflows: totals.totalInflows,
+      total_outflows: totals.totalOutflows,
+      expected_balance: totals.expectedBalance,
+      counted_balance: totals.countedBalance,
+      difference: totals.difference,
+      pending_receivables: totals.pendingReceivables,
+      pending_payables: totals.pendingPayables,
+      overdue_total: totals.overdueTotal,
+      entries_count: totals.entriesCount,
+      notes: data.notes || null,
+      status: "closed",
+      closed_at: currentDate,
+      created_at: existingDev?.created_at || currentDate,
+      updated_at: currentDate,
+    };
+
+    const devIndex = DEV_CASH_CLOSINGS.findIndex((item) => item.period_month === data.month);
+    if (devIndex === -1) DEV_CASH_CLOSINGS.unshift(closing);
+    else DEV_CASH_CLOSINGS[devIndex] = closing;
+
+    await logAuditEvent(user.id, `Fechou caixa do período ${data.month}`, "cash_closings", null);
+
+    return { ok: true, closing };
   });
 
 /**
@@ -1014,4 +1266,3 @@ export const deleteFinancialEntry = createServerFn({ method: "POST" })
 
     return { ok: true };
   });
-
