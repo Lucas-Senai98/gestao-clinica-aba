@@ -9,6 +9,7 @@ import {
   createForumThread,
   getThreadReplies,
   sendThreadReply,
+  updateThreadReply,
 } from "@/queries/communication";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquare, Send, Plus, Pin, UserCheck, Loader2, Lock } from "lucide-react";
+import { Check, MessageSquare, Send, Plus, Pin, Loader2, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -71,6 +72,9 @@ function ForumPage() {
   const [replies, setReplies]               = useState<ReplyItem[]>([]);
   const [draftMessage, setDraftMessage]     = useState("");
   const [sendingReply, setSendingReply]     = useState(false);
+  const [editingReplyId, setEditingReplyId] = useState<string | null>(null);
+  const [editText, setEditText]             = useState("");
+  const [savingEdit, setSavingEdit]         = useState(false);
 
   // Modal/Form de Novo Tópico
   const [showNewThreadForm, setShowNewThreadForm] = useState(false);
@@ -169,6 +173,41 @@ function ForumPage() {
       });
     } finally {
       setSendingReply(false);
+    }
+  };
+
+  const startEditReply = (reply: ReplyItem) => {
+    setEditingReplyId(reply.id);
+    setEditText(reply.text);
+  };
+
+  const cancelEditReply = () => {
+    setEditingReplyId(null);
+    setEditText("");
+  };
+
+  const handleUpdateReply = async () => {
+    if (!editingReplyId || !editText.trim() || !activeThreadId) return;
+
+    setSavingEdit(true);
+    try {
+      await updateThreadReply({
+        data: {
+          replyId: editingReplyId,
+          text: editText.trim(),
+        },
+      });
+
+      const updated = await getThreadReplies({ data: { threadId: activeThreadId } });
+      setReplies(updated);
+      cancelEditReply();
+      toast.success("Mensagem atualizada.");
+    } catch (err) {
+      toast.error("Erro ao editar mensagem", {
+        description: err instanceof Error ? err.message : "Erro",
+      });
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -337,6 +376,8 @@ function ForumPage() {
                   ) : (
                     replies.map((r) => {
                       const isMe = currentUser?.id === r.author_id;
+                      const canEdit = isMe || currentUser?.role === "admin";
+                      const isEditing = editingReplyId === r.id;
 
                       return (
                         <div
@@ -362,9 +403,59 @@ function ForumPage() {
                           >
                             <div className="flex items-center justify-between gap-3 text-[10px] opacity-80 font-medium">
                               <span>{r.author_name}</span>
-                              <span>{r.created_at.slice(11, 16)}</span>
+                              <div className="flex items-center gap-2">
+                                <span>{r.created_at.slice(11, 16)}</span>
+                                {canEdit && !isEditing && (
+                                  <button
+                                    type="button"
+                                    onClick={() => startEditReply(r)}
+                                    className={cn(
+                                      "inline-flex items-center gap-1 rounded px-1 py-0.5 transition hover:bg-background/20",
+                                      isMe ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+                                    )}
+                                  >
+                                    <Pencil className="size-3" />
+                                    Editar
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                            <p className="leading-relaxed whitespace-pre-line">{r.text}</p>
+                            {isEditing ? (
+                              <div className="space-y-2 pt-1">
+                                <Textarea
+                                  value={editText}
+                                  onChange={(e) => setEditText(e.target.value)}
+                                  rows={3}
+                                  className="min-w-[260px] bg-background text-foreground"
+                                />
+                                <div className="flex justify-end gap-1.5">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={cancelEditReply}
+                                    disabled={savingEdit}
+                                  >
+                                    <X className="size-3.5" /> Cancelar
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={handleUpdateReply}
+                                    disabled={savingEdit || !editText.trim()}
+                                  >
+                                    {savingEdit ? (
+                                      <Loader2 className="size-3.5 animate-spin" />
+                                    ) : (
+                                      <Check className="size-3.5" />
+                                    )}
+                                    Salvar
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="leading-relaxed whitespace-pre-line">{r.text}</p>
+                            )}
                           </div>
                         </div>
                       );
@@ -379,13 +470,14 @@ function ForumPage() {
                       e.preventDefault();
                       handleSendReply();
                     }}
-                    className="flex gap-2"
+                    className="flex items-end gap-2"
                   >
-                    <Input
+                    <Textarea
                       placeholder="Escreva sua observação clínica..."
                       value={draftMessage}
                       onChange={(e) => setDraftMessage(e.target.value)}
-                      className="text-xs flex-1"
+                      rows={2}
+                      className="text-xs flex-1 resize-none"
                     />
                     <Button type="submit" size="sm" disabled={sendingReply || !draftMessage.trim()}>
                       {sendingReply ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
