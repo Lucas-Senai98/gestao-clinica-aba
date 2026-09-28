@@ -449,3 +449,60 @@ export const sendThreadReply = createServerFn({ method: "POST" })
 
     return { id };
   });
+
+const UpdateReplyInput = z.object({
+  replyId: z.string(),
+  text:    z.string().min(1, "Mensagem não pode estar vazia"),
+});
+
+export const updateThreadReply = createServerFn({ method: "POST" })
+  .validator((d: unknown) => UpdateReplyInput.parse(d))
+  .handler(async ({ data }) => {
+    const user = await getSessionUser();
+    if (!user) throw new Error("Sessão expirada.");
+    if (user.role === "parent") throw new Error("Sem permissão.");
+
+    const db = getDB();
+    const reply = await db
+      .prepare(
+        `SELECT fr.id, fr.thread_id, fr.author_id, ft.patient_id
+         FROM forum_replies fr
+         JOIN forum_threads ft ON ft.id = fr.thread_id
+         WHERE fr.id = ?1
+         LIMIT 1`,
+      )
+      .bind(data.replyId)
+      .first<{
+        id: string;
+        thread_id: string;
+        author_id: string;
+        patient_id: string | null;
+      }>();
+
+    if (!reply) throw new Error("Mensagem não encontrada.");
+
+    const canEditAny = user.role === "admin";
+    if (!canEditAny && reply.author_id !== user.id) {
+      throw new Error("Você só pode editar mensagens criadas por você.");
+    }
+
+    if (user.role === "therapist" && reply.patient_id) {
+      const link = await db
+        .prepare(`SELECT 1 FROM patient_therapist WHERE patient_id = ?1 AND therapist_id = ?2 LIMIT 1`)
+        .bind(reply.patient_id, user.id)
+        .first();
+      if (!link) throw new Error("Acesso negado ao tópico deste paciente.");
+    }
+
+    await db
+      .prepare(`UPDATE forum_replies SET text = ?1, updated_at = datetime('now') WHERE id = ?2`)
+      .bind(data.text, data.replyId)
+      .run();
+
+    await db
+      .prepare(`UPDATE forum_threads SET updated_at = datetime('now') WHERE id = ?1`)
+      .bind(reply.thread_id)
+      .run();
+
+    return { ok: true };
+  });
