@@ -315,9 +315,7 @@ export const getPatients = createServerFn({ method: "GET" })
     }));
 
     if (d1Rows.length > 0) {
-      const d1Ids = new Set(d1Rows.map((r) => r.id));
-      const extraDev = devSummaries.filter((s) => !d1Ids.has(s.id));
-      return [...d1Rows, ...extraDev];
+      return d1Rows;
     }
 
     return devSummaries;
