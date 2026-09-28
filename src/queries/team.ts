@@ -157,7 +157,7 @@ export const getClinicTeam = createServerFn({ method: "GET" }).handler(async () 
       }>();
 
     if (rows?.results && rows.results.length > 0) {
-      const d1Members = rows.results.map((r: {
+      return rows.results.map((r: {
         id: string;
         email: string;
         name: string;
@@ -185,12 +185,6 @@ export const getClinicTeam = createServerFn({ method: "GET" }).handler(async () 
           status: r.is_active === 1 ? "Ativa" : "Inativo",
         };
       });
-
-      // Mescla com membros criados dinamicamente no ambiente de dev que não estejam duplicados
-      const d1Emails = new Set(d1Members.map((m: TeamMemberItem) => m.email.toLowerCase()));
-      const extraDevMembers = DEV_TEAM_MEMBERS.filter((m) => !d1Emails.has(m.email.toLowerCase()));
-
-      return [...d1Members, ...extraDevMembers];
     }
   } catch {
     // Fallback gracioso para ambiente sem binding D1 nativo
