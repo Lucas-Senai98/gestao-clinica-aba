@@ -38,7 +38,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AlertTriangle, ArrowDownLeft, ArrowUpRight, Calculator, CheckCircle2, FileDown, Loader2, PlusCircle, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowDownLeft, ArrowUpRight, Calculator, CheckCircle2, FileDown, FileText, Loader2, PlusCircle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -101,6 +101,15 @@ function monthLabel(month: string) {
     month: "long",
     year: "numeric",
   });
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function AdminFinancialPage() {
@@ -353,6 +362,121 @@ function AdminFinancialPage() {
     URL.revokeObjectURL(url);
   };
 
+  const exportClosingPdf = () => {
+    const countedBalance = Number(closingForm.countedBalance.replace(",", ".")) || 0;
+    const notes = closingForm.notes.trim() || "Sem observações.";
+    const closingDate = cashClosing.closing?.closed_at
+      ? new Date(cashClosing.closing.closed_at.replace(" ", "T")).toLocaleString("pt-BR")
+      : "Ainda não salvo";
+    const responsible = cashClosing.closing?.closed_by_name || "Administrador";
+    const printedAt = new Date().toLocaleString("pt-BR");
+
+    const metrics = [
+      ["Período", monthLabel(month)],
+      ["Responsável", responsible],
+      ["Data do fechamento", closingDate],
+      ["Entradas realizadas", currency(cashClosing.preview.totalInflows)],
+      ["Saídas realizadas", currency(cashClosing.preview.totalOutflows)],
+      ["Saldo inicial", currency(Number(closingForm.openingBalance.replace(",", ".")) || 0)],
+      ["Saldo esperado", currency(currentExpectedBalance)],
+      ["Saldo contado", currency(countedBalance)],
+      ["Diferença", currency(closingDifference)],
+      ["A receber pendente", currency(cashClosing.preview.pendingReceivables)],
+      ["A pagar pendente", currency(cashClosing.preview.pendingPayables)],
+      ["Vencidos", currency(cashClosing.preview.overdueTotal)],
+      ["Lançamentos considerados", String(cashClosing.preview.entriesCount)],
+    ];
+
+    const rows = metrics
+      .map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`)
+      .join("");
+
+    const historyRows = cashClosing.history
+      .slice(0, 6)
+      .map(
+        (item) => `<tr>
+          <td>${escapeHtml(monthLabel(item.period_month))}</td>
+          <td>${escapeHtml(currency(item.expected_balance))}</td>
+          <td>${escapeHtml(currency(item.counted_balance))}</td>
+          <td>${escapeHtml(currency(item.difference))}</td>
+        </tr>`,
+      )
+      .join("");
+
+    const html = `<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Fechamento de caixa - ${escapeHtml(month)}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; color: #111827; margin: 32px; }
+    header { border-bottom: 2px solid #4f46e5; margin-bottom: 24px; padding-bottom: 16px; }
+    h1 { font-size: 24px; margin: 0 0 6px; }
+    h2 { font-size: 16px; margin: 28px 0 10px; }
+    p { margin: 4px 0; color: #4b5563; }
+    table { border-collapse: collapse; width: 100%; margin-top: 8px; }
+    th, td { border: 1px solid #d1d5db; padding: 10px 12px; text-align: left; font-size: 13px; }
+    th { background: #f3f4f6; width: 38%; }
+    .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 18px 0; }
+    .card { border: 1px solid #d1d5db; border-radius: 8px; padding: 12px; }
+    .card span { color: #6b7280; display: block; font-size: 11px; text-transform: uppercase; }
+    .card strong { display: block; font-size: 18px; margin-top: 4px; }
+    .notes { border: 1px solid #d1d5db; border-radius: 8px; min-height: 90px; padding: 12px; white-space: pre-wrap; }
+    footer { color: #6b7280; font-size: 11px; margin-top: 28px; }
+    @media print {
+      body { margin: 18mm; }
+      button { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Fechamento de caixa</h1>
+    <p>Sistema de Gestão Clínica ABA • ${escapeHtml(monthLabel(month))}</p>
+    <p>Gerado em ${escapeHtml(printedAt)}</p>
+  </header>
+
+  <section class="summary">
+    <div class="card"><span>Saldo esperado</span><strong>${escapeHtml(currency(currentExpectedBalance))}</strong></div>
+    <div class="card"><span>Saldo contado</span><strong>${escapeHtml(currency(countedBalance))}</strong></div>
+    <div class="card"><span>Diferença</span><strong>${escapeHtml(currency(closingDifference))}</strong></div>
+  </section>
+
+  <h2>Resumo do período</h2>
+  <table><tbody>${rows}</tbody></table>
+
+  <h2>Observações</h2>
+  <div class="notes">${escapeHtml(notes)}</div>
+
+  <h2>Histórico recente</h2>
+  <table>
+    <thead>
+      <tr><th>Período</th><th>Esperado</th><th>Contado</th><th>Diferença</th></tr>
+    </thead>
+    <tbody>
+      ${historyRows || '<tr><td colspan="4">Nenhum fechamento anterior salvo.</td></tr>'}
+    </tbody>
+  </table>
+
+  <footer>Documento gerado automaticamente pelo módulo financeiro.</footer>
+</body>
+</html>`;
+
+    const printWindow = window.open("", "_blank", "width=900,height=700");
+    if (!printWindow) {
+      toast.error("Não foi possível abrir a janela de PDF. Verifique o bloqueador de pop-ups.");
+      return;
+    }
+
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 250);
+  };
+
+
   return (
     <AppLayout>
       <PageHeader title="Gestão financeira" subtitle="Controle contas a receber, contas a pagar, recebimentos, despesas e repasses." />
@@ -548,6 +672,9 @@ function AdminFinancialPage() {
                   <div className="flex flex-col gap-2 border-t pt-3 sm:flex-row sm:justify-end">
                     <Button type="button" variant="outline" onClick={downloadClosing}>
                       <FileDown className="size-4" /> Baixar CSV
+                    </Button>
+                    <Button type="button" variant="outline" onClick={exportClosingPdf}>
+                      <FileText className="size-4" /> Exportar PDF
                     </Button>
                     <Button type="button" onClick={closeCash} disabled={closingSaving}>
                       {closingSaving ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
