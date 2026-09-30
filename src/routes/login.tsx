@@ -263,7 +263,7 @@ function LoginPage() {
       </div>
 
       <p className="mt-6 text-[11px] text-muted-foreground/60 text-center">
-        © {new Date().getFullYear()} GiZé&apos;s Clínica · Todos os direitos reservados
+        © {new Date().getFullYear()} Ludretech · Todos os direitos reservados
       </p>
     </div>
   );
